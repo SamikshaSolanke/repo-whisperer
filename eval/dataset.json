@@ -1,0 +1,96 @@
+{
+  "repo": "pallets/flask",
+  "commit_sha": "d73fa1cdcbd8b1465c151db8924ba58b1dd14e35",
+  "questions": [
+    {
+      "id": 1,
+      "question": "How do I load configuration values from a Python object or class?",
+      "gold_files": ["src/flask/config.py"],
+      "difficulty": "easy"
+    },
+    {
+      "id": 2,
+      "question": "How does the flash() function store messages for the next request?",
+      "gold_files": ["src/flask/helpers.py"],
+      "difficulty": "easy"
+    },
+    {
+      "id": 3,
+      "question": "How does jsonify create a JSON response?",
+      "gold_files": ["src/flask/json/__init__.py", "src/flask/json/provider.py"],
+      "difficulty": "easy"
+    },
+    {
+      "id": 4,
+      "question": "How does render_template find and render a template by name?",
+      "gold_files": ["src/flask/templating.py"],
+      "difficulty": "easy"
+    },
+    {
+      "id": 5,
+      "question": "How does send_from_directory prevent access to files outside the given directory?",
+      "gold_files": ["src/flask/helpers.py"],
+      "difficulty": "easy"
+    },
+    {
+      "id": 6,
+      "question": "What does abort() do and how does it raise an HTTP error?",
+      "gold_files": ["src/flask/helpers.py"],
+      "difficulty": "easy"
+    },
+    {
+      "id": 7,
+      "question": "How does url_for build a URL for an endpoint?",
+      "gold_files": ["src/flask/helpers.py", "src/flask/app.py"],
+      "difficulty": "easy"
+    },
+    {
+      "id": 8,
+      "question": "How does the @app.route decorator register a view function?",
+      "gold_files": ["src/flask/sansio/scaffold.py", "src/flask/sansio/app.py"],
+      "difficulty": "medium"
+    },
+    {
+      "id": 9,
+      "question": "How are session contents serialized and saved into a signed cookie?",
+      "gold_files": ["src/flask/sessions.py"],
+      "difficulty": "medium"
+    },
+    {
+      "id": 10,
+      "question": "How does Flask register a blueprint on an application?",
+      "gold_files": ["src/flask/sansio/blueprints.py", "src/flask/sansio/app.py"],
+      "difficulty": "medium"
+    },
+    {
+      "id": 11,
+      "question": "How are custom error handlers registered and looked up when an exception occurs?",
+      "gold_files": ["src/flask/sansio/scaffold.py", "src/flask/app.py"],
+      "difficulty": "medium"
+    },
+    {
+      "id": 12,
+      "question": "How does the Flask test client make requests and keep cookies between them?",
+      "gold_files": ["src/flask/testing.py"],
+      "difficulty": "medium"
+    },
+    {
+      "id": 13,
+      "question": "What happens from an incoming WSGI request to the view function being called and a response returned?",
+      "gold_files": ["src/flask/app.py", "src/flask/ctx.py"],
+      "difficulty": "hard"
+    },
+    {
+      "id": 14,
+      "question": "How do request, g, and current_app resolve to the right object for the current request?",
+      "gold_files": ["src/flask/globals.py", "src/flask/ctx.py"],
+      "difficulty": "hard"
+    },
+    {
+      "id": 15,
+      "question": "What cleanup runs at the end of a request, and in what order do teardown functions and context popping happen?",
+      "gold_files": ["src/flask/app.py", "src/flask/ctx.py"],
+      "difficulty": "hard"
+    }
+  ]
+}
