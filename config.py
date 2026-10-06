@@ -14,3 +14,14 @@ GROQ_MODEL = "llama-3.3-70b-versatile"   # check Groq's console for current mode
 
 MAX_FILE_BYTES = 100_000
 REPOS_DIR = "data/repos"
+
+DENSE_DIM = 384                     # bge-small-en-v1.5 output size
+MAX_CHUNK_CHARS = 2000              # ~450 tokens; bge-small truncates at 512 tokens
+OVERLAP_LINES = 5
+INCLUDE_TESTS = False               # flip to True later for an ablation
+
+EXTENSIONS = {".py": "python", ".md": "markdown", ".rst": "rst"}
+SKIP_DIRS = {".git", ".github", ".devcontainer", "node_modules", "venv", ".venv",
+             "__pycache__", "_build", "_static", "dist", "build"}
+TEST_DIRS = {"tests", "test"}
+SKIP_FILES = {"CHANGES.rst", "LICENSE.txt"}
