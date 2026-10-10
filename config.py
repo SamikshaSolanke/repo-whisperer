@@ -9,7 +9,7 @@ GROQ_API_KEY = os.environ["GROQ_API_KEY"]
 COLLECTION = "code"
 DENSE_MODEL = "BAAI/bge-small-en-v1.5"   # 384 dims
 SPARSE_MODEL = "Qdrant/bm25"
-RERANK_MODEL = "Xenova/ms-marco-MiniLM-L-6-v2"
+RERANK_MODEL = "jinaai/jina-reranker-v1-tiny-en"
 GROQ_MODEL = "openai/gpt-oss-120b"   # check Groq's console for current model names
 
 MAX_FILE_BYTES = 100_000
@@ -24,8 +24,15 @@ TOP_K = 6                  # chunks sent to the LLM
 GROQ_TEMPERATURE = 0.1     # low = more faithful to the code
 GROQ_MAX_TOKENS = 1024
 
+CANDIDATES = 30        # candidates fetched before fusion and reranking
+REWRITE_N = 3          # extra search queries generated per question
+
 EXTENSIONS = {".py": "python", ".md": "markdown", ".rst": "rst"}
 SKIP_DIRS = {".git", ".github", ".devcontainer", "node_modules", "venv", ".venv",
              "__pycache__", "_build", "_static", "dist", "build"}
 TEST_DIRS = {"tests", "test"}
 SKIP_FILES = {"CHANGES.rst", "LICENSE.txt"}
+
+DOC_LANGUAGES = {"markdown", "rst"}
+LOW_PRIORITY_DIRS = {"examples", "tests", "docs"}
+NON_CODE_PENALTY = 2.0     # subtracted from the reranker score; tune on the eval set

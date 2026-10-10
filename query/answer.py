@@ -42,5 +42,5 @@ def answer_stream(question: str, chunks: list[dict]) -> Iterator[str]:
 
 def cited_indices(answer: str, n_chunks: int) -> list[int]:
     """Return the sorted chunk numbers the model actually cited (1-based)."""
-    nums = {int(m) for m in re.findall(r"[\[【](\d+)[\]】]", answer)}
+    nums = {int(m) for m in re.findall(r"[\[【](\d+)(?:†[^\]】]*)?[\]】]", answer)}
     return sorted(n for n in nums if 1 <= n <= n_chunks)

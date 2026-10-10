@@ -2,10 +2,13 @@ import argparse
 import sys
 from query.answer import answer_stream, cited_indices
 from query.retrieve import retrieve
+from query.rewrite import rewrite_query
 
 
-def ask(question: str, repo: str | None, k: int, show_chunks: bool):
-    chunks = retrieve(question, k=k, repo=repo)
+def ask(question, repo, k, show_chunks, **flags):
+    if show_chunks and flags.get("rewrite"):
+        print("Rewrites:", rewrite_query(question))
+    chunks = retrieve(question, k=k, repo=repo, **flags)
     if show_chunks:
         print("\n--- Retrieved ---")
         for i, c in enumerate(chunks, 1):
@@ -34,11 +37,18 @@ def main():
     ap.add_argument("--repo", default="pallets/flask")
     ap.add_argument("-k", type=int, default=6)
     ap.add_argument("--show-chunks", action="store_true", help="print retrieved chunks and scores")
+    ap.add_argument("--dense-only", action="store_true")
+    ap.add_argument("--no-rewrite", action="store_true")
+    ap.add_argument("--no-rerank", action="store_true")
     args = ap.parse_args()
+    flags = dict(hybrid=not args.dense_only,
+                 rewrite=not args.no_rewrite,
+                 rerank=not args.no_rerank)
 
     if args.question:
-        ask(args.question, args.repo, args.k, args.show_chunks)
+        ask(args.question, args.repo, args.k, args.show_chunks, **flags)
         return
+
     print("Ask about the repo (Ctrl+C to quit)")
     while True:
         try:
@@ -46,7 +56,7 @@ def main():
         except (KeyboardInterrupt, EOFError):
             break
         if q:
-            ask(q, args.repo, args.k, args.show_chunks)
+            ask(q, args.repo, args.k, args.show_chunks, **flags)
 
 
 if __name__ == "__main__":
