@@ -80,7 +80,7 @@ def _penalty(payload: dict) -> float:
 
 
 def retrieve(question: str, k: int = config.TOP_K, repo: str | None = None,
-             hybrid: bool = True, rewrite: bool = True, rerank: bool = True,
+             hybrid: bool = True, rewrite: bool = True, rerank: bool = False,
              prefer_code: bool = False) -> list[dict]:
     queries = [question] + (rewrite_query(question) if rewrite else [])
     pool = config.CANDIDATES if (rerank or len(queries) > 1) else k

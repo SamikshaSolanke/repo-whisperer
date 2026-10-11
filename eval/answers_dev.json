@@ -1,0 +1,165 @@
+[
+  {
+    "id": 1,
+    "type": "direct",
+    "question": "How do I load configuration values from a Python object or class?",
+    "refused": false,
+    "cited": [
+      1,
+      2
+    ],
+    "answer": "Use the **`Config.from_object`** method of the Flask config object.\n\n```python\napp.config.from_object('myconfig.ProductionConfig')\n# or\nfrom myconfig import ProductionConfig\napp.config.from_object(ProductionConfig)          # class reference\n# or, if you need @property values\napp.config.from_object(ProductionConfig())        # instance\n```\n\n`from_object` accepts either a dotted import string or an actual object.  \nIf a string is given it is imported with `import_string`; then every attribute\nwhose name is **uppercase** is copied into the app\u2019s config dictionary\n(`self[key] = getattr(obj, key)`)\u30101\u3011.  \n\nThe method does **not** instantiate a class automatically, so to use\n`@property` attributes you must instantiate the class yourself before passing\nit to `from_object`\u30102\u3011. Only the uppercase attributes of the module or class\nare loaded.",
+    "faithfulness": 1.0,
+    "unsupported": []
+  },
+  {
+    "id": 2,
+    "type": "direct",
+    "question": "How does the flash() function store messages for the next request?",
+    "refused": false,
+    "cited": [
+      2
+    ],
+    "answer": "The `flash()` helper saves the message in the user\u2019s session. It reads the current list stored under the key `\"_flashes\"` (or creates an empty list), appends a `(category, message)` tuple, and then writes the updated list back to `session[\"_flashes\"]` so it will be available on the next request\u202f[2].",
+    "faithfulness": 1.0,
+    "unsupported": []
+  },
+  {
+    "id": 3,
+    "type": "direct",
+    "question": "How does jsonify create a JSON response?",
+    "refused": false,
+    "cited": [
+      1,
+      3
+    ],
+    "answer": "`jsonify` is just a thin wrapper that delegates the work to the current app\u2019s JSON provider.  \nWhen called it executes  \n\n```python\nreturn current_app.json.response(*args, **kwargs)\n```  \n\n[1]  \n\nThe provider\u2019s `response` method builds the actual response object:\n\n```python\nobj = self._prepare_response_obj(args, kwargs)\nreturn self._app.response_class(self.dumps(obj), mimetype=\"application/json\")\n```  \n\n[3]  \n\nSo `jsonify` creates a JSON response by:\n\n1. Passing the supplied data to `current_app.json.response`.  \n2. The `JSONProvider.response` method prepares the data, serializes it with `self.dumps`, and returns a Flask `Response` whose body is the JSON string and whose mimetype is `\"application/json\"`.",
+    "faithfulness": 1.0,
+    "unsupported": []
+  },
+  {
+    "id": 4,
+    "type": "direct",
+    "question": "How does render_template find and render a template by name?",
+    "refused": false,
+    "cited": [
+      4,
+      5
+    ],
+    "answer": "`render_template` first gets the current application context, then asks Flask\u2019s Jinja environment to locate the requested template.  \n\n```python\nctx = app_ctx._get_current_object()\ntemplate = ctx.app.jinja_env.get_or_select_template(template_name_or_list)\n```\n\nThe `jinja_env.get_or_select_template` call searches the configured template folders (the application\u2019s *templates* directory, blueprint template folders, etc.) and returns a `Template` object for the first name that exists\u202f[5].\n\nOnce the `Template` object is obtained, `render_template` delegates to the private `_render` helper:\n\n```python\nreturn _render(ctx, template, context)\n```\n\n`_render` updates the context with Flask\u2011specific values, emits the `before_render_template` signal, renders the template with the supplied variables, emits the `template_rendered` signal, and returns the rendered string\u202f[4].\n\nThus, `render_template` finds a template by name via the Jinja environment\u2019s lookup and then renders it through `_render`, which ultimately calls `template.render(context)`.",
+    "faithfulness": 1.0,
+    "unsupported": []
+  },
+  {
+    "id": 5,
+    "type": "direct",
+    "question": "How does send_from_directory prevent access to files outside the given directory?",
+    "refused": false,
+    "cited": [
+      1
+    ],
+    "answer": "`send_from_directory` delegates the work to Werkzeug\u2019s `send_from_directory`, which first joins the supplied *directory* and *path* with `werkzeug.security.safe_join`.  \n`safe_join` validates that the resulting absolute path is still located inside the given directory; if the client\u2011supplied path tries to escape (e.g., using \u201c..\u201d), the join fails and a 404\u202fNotFound is raised. This guarantees that only files under the specified directory can be served.  \n\n```python\ndef send_from_directory(...):\n    \"\"\"... Uses :func:`~werkzeug.security.safe_join` to ensure the path\n    coming from the client is not maliciously crafted to point outside the\n    specified directory.\"\"\"\n    return werkzeug.utils.send_from_directory(\n        directory, path, **_prepare_send_file_kwargs(**kwargs)\n    )\n```\n[1]",
+    "faithfulness": 1.0,
+    "unsupported": []
+  },
+  {
+    "id": 6,
+    "type": "direct",
+    "question": "What does abort() do and how does it raise an HTTP error?",
+    "refused": false,
+    "cited": [
+      1,
+      3
+    ],
+    "answer": "`abort()` raises a **Werkzeug\u202f`HTTPException`** for the status code (or response) you pass to it.\n\n```python\ndef abort(code: int | BaseResponse, *args, **kwargs) -> t.NoReturn:\n    if (ctx := _cv_app.get(None)) is not None:\n        ctx.app.aborter(code, *args, **kwargs)   # use the app\u2019s aborter\n    _wz_abort(code, *args, **kwargs)            # fall back to Werkzeug\n```\n\n* If a Flask application context is active, it calls the application\u2019s **`aborter`** object (`ctx.app.aborter`)\u202f\u2014\u202fthe object created by `App.make_aborter()` which returns an instance of `aborter_class` (by default `werkzeug.exceptions.Aborter`)\u202f\u30101\u2020L4-L9\u3011\u30103\u2020L1-L5\u3011.  \n* The aborter (or, when no app is available, the direct call to `_wz_abort`) constructs and **raises** the appropriate `HTTPException`, terminating the request with that HTTP error response\u202f\u30101\u2020L11-L13\u3011.",
+    "faithfulness": 1.0,
+    "unsupported": []
+  },
+  {
+    "id": 7,
+    "type": "direct",
+    "question": "How does url_for build a URL for an endpoint?",
+    "refused": false,
+    "cited": [
+      2,
+      3,
+      5
+    ],
+    "answer": "`flask.url_for` is a thin wrapper that forwards to the application\u2019s **`Flask.url_for`** method:\n\n```python\ndef url_for(...):\n    return current_app.url_for(...)\n```\n[2]\n\nInside **`Flask.url_for`** the function first decides whether it is being called inside an active request.  \n* If a request is active it uses the request\u2019s `url_adapter`; it also resolves a leading \u201c.\u201d to the current blueprint name and sets `_external` to `True` only when a scheme is explicitly given.  \n* If no request is active it creates a URL adapter from the app (which requires `SERVER_NAME`), and defaults `_external` to `True` so the generated URL includes scheme and domain.  \n[5][3]\n\nAfter the context handling, it validates the `_scheme`/`_external` combination, injects any defaults registered with `@app.url_defaults`, and then calls the adapter\u2019s **`build`** method:\n\n```python\nrv = url_adapter.build(\n    endpoint,\n    values,\n    method=_method,\n    url_scheme=_scheme,\n    force_external=_external,\n)\n```\n[3]\n\nIf `build` raises a `BuildError`, the error is passed to `self.handle_url_build_error`; if that method returns a string it is used, otherwise the error propagates.  \n[3]\n\nFinally, if an `_anchor` was supplied it is URL\u2011quoted and appended as `#anchor`, and the resulting string is returned.  \n[3]\n\nIn summary, `url_for`:\n\n1. Delegates to the current app\u2019s method.  \n2. Determines the proper URL adapter (request\u2011based or created from `SERVER_NAME`).  \n3. Handles blueprint\u2011relative endpoints and the default external/internal flag.  \n4. Calls `url_adapter.build` with the endpoint, values, method, scheme, and external flag.  \n5. Handles build errors via `handle_url_build_error`.  \n6. Appends an optional anchor and returns the final URL.  ",
+    "faithfulness": 1.0,
+    "unsupported": []
+  },
+  {
+    "id": 8,
+    "type": "direct",
+    "question": "How does the @app.route decorator register a view function?",
+    "refused": false,
+    "cited": [
+      1,
+      3
+    ],
+    "answer": "The `@app.route` decorator is implemented by **`Scaffold.route`**.  \nWhen the decorator is applied, it creates an inner `decorator` function that:\n\n1. Removes any explicit `endpoint` value from the passed options (`endpoint = options.pop(\"endpoint\", None)`),  \n2. Calls **`self.add_url_rule`** with the URL rule, the resolved endpoint, the view function, and the remaining options,  \n3. Returns the original view function unchanged.\n\n```python\ndef decorator(f):\n    endpoint = options.pop(\"endpoint\", None)\n    self.add_url_rule(rule, endpoint, f, **options)\n    return f\n```\n\n`add_url_rule` (see `Scaffold.add_url_rule`) is the method that actually registers the rule and associates the view function with the endpoint, making the function callable when the URL is matched.  \n\nThus, `@app.route` registers a view by delegating to `add_url_rule` with the rule and view function. [1][3]",
+    "faithfulness": 1.0,
+    "unsupported": []
+  },
+  {
+    "id": 9,
+    "type": "direct",
+    "question": "How are session contents serialized and saved into a signed cookie?",
+    "refused": false,
+    "cited": [
+      1,
+      5
+    ],
+    "answer": "`SecureCookieSessionInterface.save_session` handles the serialization and storage of the session.  \nWhen the session is not empty and should be set, the method:\n\n1. Calls `self.get_signing_serializer(app)` to obtain an **itsdangerous** serializer.  \n2. Serializes the session data with `dumps(dict(session))`, producing a signed string.  \n3. Writes that string to the response as a cookie via `response.set_cookie(...)`, passing the cookie name, the signed value, expiration, and other cookie options.\n\n```python\nval = self.get_signing_serializer(app).dumps(dict(session))  # serialize & sign\nresponse.set_cookie(\n    name,\n    val,\n    expires=expires,\n    httponly=httponly,\n    domain=domain,\n    path=path,\n    secure=secure,\n    partitioned=partitioned,\n    samesite=samesite,\n)\n```\n\nThus, session contents are turned into a dictionary, signed with the app\u2019s secret key using itsdangerous, and saved as a signed cookie on the response.\u202f[5][1]",
+    "faithfulness": 0.8,
+    "unsupported": [
+      "session is signed with the app\u2019s secret key using itsdangerous"
+    ]
+  },
+  {
+    "id": 10,
+    "type": "direct",
+    "question": "How does Flask register a blueprint on an application?",
+    "refused": false,
+    "cited": [
+      1,
+      2
+    ],
+    "answer": "Flask registers a blueprint in two steps:\n\n1. **The application method** \u2013 `App.register_blueprint` simply forwards the call to the blueprint\u2019s own `register` method, passing the app instance and any keyword options the user supplied.  \n\n   ```python\n   def register_blueprint(self, blueprint, **options):\n       blueprint.register(self, options)\n   ```  \n   [1]\n\n2. **The blueprint method** \u2013 `Blueprint.register` builds the name under which the blueprint will be stored, checks for name collisions, and records the first\u2011time registration flags. If the name is already present in `app.blueprints` it raises a `ValueError`; otherwise it proceeds (later it creates a `BlueprintSetupState` and adds the blueprint to `app.blueprints`).  \n\n   ```python\n   name_prefix = options.get(\"name_prefix\", \"\")\n   self_name = options.get(\"name\", self.name)\n   name = f\"{name_prefix}.{self_name}\".lstrip(\".\")\n\n   if name in app.blueprints:\n       raise ValueError(...)\n   first_bp_registration = not any(bp is self for bp in app.blueprints.values())\n   first_name_registration = name not in app.blueprints\n   ```  \n   [2]\n\nThus, calling `app.register_blueprint(bp, ...)` triggers `bp.register(app, options)`, which validates the registration name, ensures no duplicate registration, and prepares the blueprint for integration with the application.",
+    "faithfulness": 0.8333333333333334,
+    "unsupported": [
+      "later it creates a BlueprintSetupState and adds the blueprint to app.blueprints"
+    ]
+  },
+  {
+    "id": 11,
+    "type": "direct",
+    "question": "How are custom error handlers registered and looked up when an exception occurs?",
+    "refused": false,
+    "cited": [
+      2,
+      3,
+      4,
+      5,
+      6
+    ],
+    "answer": "Custom error handlers are added to a Flask app (or blueprint) either with the **decorator** `@app.errorhandler(...)` or by calling `app.register_error_handler(...)`.  \nThe decorator defined on `Scaffold.errorhandler` simply forwards the function to `register_error_handler`\u202f\u2014\u202fso the same registration logic is used for both forms\u202f[3].  \nYou can pass an **HTTP status code** (e.g.,\u202f`404`) or any **exception class** (including your own subclass of `werkzeug.exceptions.HTTPException`) to register a handler\u202f[2][5].\n\nWhen a request raises an exception, Flask looks for a matching handler in `App._find_error_handler`. The search proceeds in this order:\n\n1. Blueprint\u2011specific handler for the exact **error code**.  \n2. Application\u2011wide handler for that **code**.  \n3. Blueprint\u2011specific handler for the **exception class** (and its bases).  \n4. Application\u2011wide handler for the **exception class** (and its bases).\n\nFor each candidate, Flask iterates over the exception\u2019s **MRO** (method\u2011resolution order) to find the most specific class that has a registered handler\u202f[6]. If none is found, Flask falls back to the default behavior (generic 500 or the built\u2011in HTTPException page)\u202f[4][5].\n\nThus, custom handlers are registered via `errorhandler`/`register_error_handler`, stored in the app\u2019s `error_handler_spec` mapping, and later retrieved by `_find_error_handler` following the blueprint \u2192 app and code \u2192 class hierarchy precedence.",
+    "faithfulness": 1.0,
+    "unsupported": []
+  },
+  {
+    "id": 12,
+    "type": "direct",
+    "question": "How does the Flask test client make requests and keep cookies between them?",
+    "refused": false,
+    "cited": [
+      1,
+      2,
+      3
+    ],
+    "answer": "The test client stores a cookie jar in the attribute `self._cookies`.  \nWhen a request is about to be sent the client calls `_add_cookies_to_wsgi`, which copies the cookies from that jar into the WSGI environment of the request so the application sees them as incoming cookies.\u202fAfter the view returns, the client builds a fresh response object and then calls `_update_cookies_from_response`, passing the `Set\u2011Cookie` headers that the response generated.\u202fThose headers are parsed and written back into `self._cookies`, so the next request automatically includes any cookies the server set.\u202fIf the client is created with `use_cookies=False` (or `self._cookies` is `None`) a `TypeError` is raised, enforcing that cookie handling must be enabled.  \n\nThus the Flask test client makes each request through a temporary request context, injects the stored cookies into the request, and updates the stored cookie jar from the response\u2019s `Set\u2011Cookie` headers, allowing cookies to persist across multiple requests.  \n\n[1] shows the cookie\u2011adding and updating logic and the guard against disabled cookies.  \n[2] and [3] show that `Flask.test_client` creates the client with `use_cookies=True` by default.",
+    "faithfulness": 1.0,
+    "unsupported": []
+  }
+]

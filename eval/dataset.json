@@ -5,92 +5,400 @@
     {
       "id": 1,
       "question": "How do I load configuration values from a Python object or class?",
-      "gold_files": ["src/flask/config.py"],
-      "difficulty": "easy"
+      "gold_files": [
+        "src/flask/config.py"
+      ],
+      "difficulty": "easy",
+      "type": "direct",
+      "split": "dev"
     },
     {
       "id": 2,
       "question": "How does the flash() function store messages for the next request?",
-      "gold_files": ["src/flask/helpers.py"],
-      "difficulty": "easy"
+      "gold_files": [
+        "src/flask/helpers.py"
+      ],
+      "difficulty": "easy",
+      "type": "direct",
+      "split": "dev"
     },
     {
       "id": 3,
       "question": "How does jsonify create a JSON response?",
-      "gold_files": ["src/flask/json/__init__.py", "src/flask/json/provider.py"],
-      "difficulty": "easy"
+      "gold_files": [
+        "src/flask/json/__init__.py",
+        "src/flask/json/provider.py"
+      ],
+      "difficulty": "easy",
+      "type": "direct",
+      "split": "dev"
     },
     {
       "id": 4,
       "question": "How does render_template find and render a template by name?",
-      "gold_files": ["src/flask/templating.py"],
-      "difficulty": "easy"
+      "gold_files": [
+        "src/flask/templating.py"
+      ],
+      "difficulty": "easy",
+      "type": "direct",
+      "split": "dev"
     },
     {
       "id": 5,
       "question": "How does send_from_directory prevent access to files outside the given directory?",
-      "gold_files": ["src/flask/helpers.py"],
-      "difficulty": "easy"
+      "gold_files": [
+        "src/flask/helpers.py"
+      ],
+      "difficulty": "easy",
+      "type": "direct",
+      "split": "dev"
     },
     {
       "id": 6,
       "question": "What does abort() do and how does it raise an HTTP error?",
-      "gold_files": ["src/flask/helpers.py"],
-      "difficulty": "easy"
+      "gold_files": [
+        "src/flask/helpers.py"
+      ],
+      "difficulty": "easy",
+      "type": "direct",
+      "split": "dev"
     },
     {
       "id": 7,
       "question": "How does url_for build a URL for an endpoint?",
-      "gold_files": ["src/flask/helpers.py", "src/flask/app.py"],
-      "difficulty": "easy"
+      "gold_files": [
+        "src/flask/helpers.py",
+        "src/flask/app.py"
+      ],
+      "difficulty": "easy",
+      "type": "direct",
+      "split": "dev"
     },
     {
       "id": 8,
       "question": "How does the @app.route decorator register a view function?",
-      "gold_files": ["src/flask/sansio/scaffold.py", "src/flask/sansio/app.py"],
-      "difficulty": "medium"
+      "gold_files": [
+        "src/flask/sansio/scaffold.py",
+        "src/flask/sansio/app.py"
+      ],
+      "difficulty": "medium",
+      "type": "direct",
+      "split": "dev"
     },
     {
       "id": 9,
       "question": "How are session contents serialized and saved into a signed cookie?",
-      "gold_files": ["src/flask/sessions.py"],
-      "difficulty": "medium"
+      "gold_files": [
+        "src/flask/sessions.py"
+      ],
+      "difficulty": "medium",
+      "type": "direct",
+      "split": "dev"
     },
     {
       "id": 10,
       "question": "How does Flask register a blueprint on an application?",
-      "gold_files": ["src/flask/sansio/blueprints.py", "src/flask/sansio/app.py"],
-      "difficulty": "medium"
+      "gold_files": [
+        "src/flask/sansio/blueprints.py",
+        "src/flask/sansio/app.py"
+      ],
+      "difficulty": "medium",
+      "type": "direct",
+      "split": "dev"
     },
     {
       "id": 11,
       "question": "How are custom error handlers registered and looked up when an exception occurs?",
-      "gold_files": ["src/flask/sansio/scaffold.py", "src/flask/app.py"],
-      "difficulty": "medium"
+      "gold_files": [
+        "src/flask/sansio/scaffold.py",
+        "src/flask/app.py"
+      ],
+      "difficulty": "medium",
+      "type": "direct",
+      "split": "dev"
     },
     {
       "id": 12,
       "question": "How does the Flask test client make requests and keep cookies between them?",
-      "gold_files": ["src/flask/testing.py"],
-      "difficulty": "medium"
+      "gold_files": [
+        "src/flask/testing.py"
+      ],
+      "difficulty": "medium",
+      "type": "direct",
+      "split": "dev"
     },
     {
       "id": 13,
       "question": "What happens from an incoming WSGI request to the view function being called and a response returned?",
-      "gold_files": ["src/flask/app.py", "src/flask/ctx.py"],
-      "difficulty": "hard"
+      "gold_files": [
+        "src/flask/app.py",
+        "src/flask/ctx.py"
+      ],
+      "difficulty": "hard",
+      "type": "direct",
+      "split": "dev"
     },
     {
       "id": 14,
       "question": "How do request, g, and current_app resolve to the right object for the current request?",
-      "gold_files": ["src/flask/globals.py", "src/flask/ctx.py"],
-      "difficulty": "hard"
+      "gold_files": [
+        "src/flask/globals.py",
+        "src/flask/ctx.py"
+      ],
+      "difficulty": "hard",
+      "type": "direct",
+      "split": "dev"
     },
     {
       "id": 15,
       "question": "What cleanup runs at the end of a request, and in what order do teardown functions and context popping happen?",
-      "gold_files": ["src/flask/app.py", "src/flask/ctx.py"],
-      "difficulty": "hard"
+      "gold_files": [
+        "src/flask/app.py",
+        "src/flask/ctx.py"
+      ],
+      "difficulty": "hard",
+      "type": "direct",
+      "split": "dev"
+    },
+    {
+      "id": 16,
+      "question": "How does Flask remember who the user is between requests?",
+      "gold_files": [
+        "src/flask/sessions.py"
+      ],
+      "difficulty": "medium",
+      "type": "vocab",
+      "split": "dev"
+    },
+    {
+      "id": 17,
+      "question": "How does Flask decide which function handles an incoming URL?",
+      "gold_files": [
+        "src/flask/ctx.py",
+        "src/flask/app.py"
+      ],
+      "difficulty": "medium",
+      "type": "vocab",
+      "split": "test"
+    },
+    {
+      "id": 18,
+      "question": "How can I share data between functions during a single request without passing arguments?",
+      "gold_files": [
+        "src/flask/ctx.py",
+        "src/flask/globals.py"
+      ],
+      "difficulty": "medium",
+      "type": "vocab",
+      "split": "dev"
+    },
+    {
+      "id": 19,
+      "question": "How does Flask turn whatever a view returns into an HTTP response?",
+      "gold_files": [
+        "src/flask/app.py"
+      ],
+      "difficulty": "medium",
+      "type": "vocab",
+      "split": "test"
+    },
+    {
+      "id": 20,
+      "question": "How do I run some code before every request is handled?",
+      "gold_files": [
+        "src/flask/sansio/scaffold.py",
+        "src/flask/app.py"
+      ],
+      "difficulty": "easy",
+      "type": "vocab",
+      "split": "dev"
+    },
+    {
+      "id": 21,
+      "question": "How does Flask read settings from environment variables?",
+      "gold_files": [
+        "src/flask/config.py"
+      ],
+      "difficulty": "easy",
+      "type": "vocab",
+      "split": "test"
+    },
+    {
+      "id": 22,
+      "question": "How can one URL respond differently to GET and POST using a class?",
+      "gold_files": [
+        "src/flask/views.py"
+      ],
+      "difficulty": "medium",
+      "type": "vocab",
+      "split": "dev"
+    },
+    {
+      "id": 23,
+      "question": "How does Flask let a user download a file from the server?",
+      "gold_files": [
+        "src/flask/helpers.py"
+      ],
+      "difficulty": "easy",
+      "type": "vocab",
+      "split": "test"
+    },
+    {
+      "id": 24,
+      "question": "Where is SecureCookieSessionInterface.save_session defined and what does it do?",
+      "gold_files": [
+        "src/flask/sessions.py"
+      ],
+      "difficulty": "easy",
+      "type": "identifier",
+      "split": "dev"
+    },
+    {
+      "id": 25,
+      "question": "What does Flask.full_dispatch_request do?",
+      "gold_files": [
+        "src/flask/app.py"
+      ],
+      "difficulty": "easy",
+      "type": "identifier",
+      "split": "test"
+    },
+    {
+      "id": 26,
+      "question": "How does get_flashed_messages work?",
+      "gold_files": [
+        "src/flask/helpers.py"
+      ],
+      "difficulty": "easy",
+      "type": "identifier",
+      "split": "dev"
+    },
+    {
+      "id": 27,
+      "question": "What is DispatchingJinjaLoader used for?",
+      "gold_files": [
+        "src/flask/templating.py"
+      ],
+      "difficulty": "easy",
+      "type": "identifier",
+      "split": "test"
+    },
+    {
+      "id": 28,
+      "question": "How does FlaskGroup find the application to load?",
+      "gold_files": [
+        "src/flask/cli.py"
+      ],
+      "difficulty": "medium",
+      "type": "identifier",
+      "split": "dev"
+    },
+    {
+      "id": 29,
+      "question": "What is _AppCtxGlobals?",
+      "gold_files": [
+        "src/flask/ctx.py"
+      ],
+      "difficulty": "easy",
+      "type": "identifier",
+      "split": "test"
+    },
+    {
+      "id": 30,
+      "question": "How do I deploy a Flask app with Gunicorn?",
+      "gold_files": [
+        "docs/deploying/gunicorn.rst"
+      ],
+      "difficulty": "easy",
+      "type": "docs",
+      "split": "dev"
+    },
+    {
+      "id": 31,
+      "question": "How should I handle file uploads securely?",
+      "gold_files": [
+        "docs/patterns/fileuploads.rst"
+      ],
+      "difficulty": "easy",
+      "type": "docs",
+      "split": "test"
+    },
+    {
+      "id": 32,
+      "question": "How do I structure a Flask project using an application factory?",
+      "gold_files": [
+        "docs/patterns/appfactories.rst",
+        "docs/tutorial/factory.rst"
+      ],
+      "difficulty": "medium",
+      "type": "docs",
+      "split": "dev"
+    },
+    {
+      "id": 33,
+      "question": "How do I configure logging in a Flask app?",
+      "gold_files": [
+        "docs/logging.rst"
+      ],
+      "difficulty": "easy",
+      "type": "docs",
+      "split": "test"
+    },
+    {
+      "id": 34,
+      "question": "How do I use SQLAlchemy with Flask?",
+      "gold_files": [
+        "docs/patterns/sqlalchemy.rst"
+      ],
+      "difficulty": "easy",
+      "type": "docs",
+      "split": "test"
+    },
+    {
+      "id": 35,
+      "question": "How does Flask connect to PostgreSQL?",
+      "gold_files": [],
+      "difficulty": "n/a",
+      "type": "negative",
+      "split": "dev",
+      "absent_terms": [
+        "psycopg",
+        "postgres"
+      ]
+    },
+    {
+      "id": 36,
+      "question": "How does Flask integrate with Kafka message queues?",
+      "gold_files": [],
+      "difficulty": "n/a",
+      "type": "negative",
+      "split": "dev",
+      "absent_terms": [
+        "kafka"
+      ]
+    },
+    {
+      "id": 37,
+      "question": "How does Flask implement rate limiting for API endpoints?",
+      "gold_files": [],
+      "difficulty": "n/a",
+      "type": "negative",
+      "split": "test",
+      "absent_terms": [
+        "rate limit",
+        "ratelimit"
+      ]
+    },
+    {
+      "id": 38,
+      "question": "How does Flask support OAuth2 login with Google?",
+      "gold_files": [],
+      "difficulty": "n/a",
+      "type": "negative",
+      "split": "test",
+      "absent_terms": [
+        "oauth"
+      ]
     }
   ]
 }

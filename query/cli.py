@@ -39,11 +39,11 @@ def main():
     ap.add_argument("--show-chunks", action="store_true", help="print retrieved chunks and scores")
     ap.add_argument("--dense-only", action="store_true")
     ap.add_argument("--no-rewrite", action="store_true")
-    ap.add_argument("--no-rerank", action="store_true")
+    ap.add_argument("--rerank", action="store_true", help="add the cross-encoder reranker")
     args = ap.parse_args()
     flags = dict(hybrid=not args.dense_only,
-                 rewrite=not args.no_rewrite,
-                 rerank=not args.no_rerank)
+             rewrite=not args.no_rewrite,
+             rerank=args.rerank)
 
     if args.question:
         ask(args.question, args.repo, args.k, args.show_chunks, **flags)

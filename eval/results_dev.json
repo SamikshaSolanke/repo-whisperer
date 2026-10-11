@@ -1,0 +1,170 @@
+{
+  "0. Fixed chunks, dense only": {
+    "hit": 0.75,
+    "mrr": 0.6145833333333334,
+    "n": 24,
+    "latency_s": 0.25306763251622516,
+    "by_type": {
+      "direct": [
+        11,
+        15
+      ],
+      "vocab": [
+        2,
+        4
+      ],
+      "identifier": [
+        3,
+        3
+      ],
+      "docs": [
+        2,
+        2
+      ]
+    }
+  },
+  "1. AST chunks, dense only": {
+    "hit": 0.875,
+    "mrr": 0.7569444444444445,
+    "n": 24,
+    "latency_s": 0.2820291221141815,
+    "by_type": {
+      "direct": [
+        14,
+        15
+      ],
+      "vocab": [
+        2,
+        4
+      ],
+      "identifier": [
+        3,
+        3
+      ],
+      "docs": [
+        2,
+        2
+      ]
+    }
+  },
+  "2. + BM25 hybrid": {
+    "hit": 0.875,
+    "mrr": 0.7118055555555555,
+    "n": 24,
+    "latency_s": 0.3639727433522542,
+    "by_type": {
+      "direct": [
+        14,
+        15
+      ],
+      "vocab": [
+        2,
+        4
+      ],
+      "identifier": [
+        3,
+        3
+      ],
+      "docs": [
+        2,
+        2
+      ]
+    }
+  },
+  "3. hybrid + query rewriting": {
+    "hit": 1.0,
+    "mrr": 0.7895833333333334,
+    "n": 24,
+    "latency_s": 2.060833752155304,
+    "by_type": {
+      "direct": [
+        15,
+        15
+      ],
+      "vocab": [
+        4,
+        4
+      ],
+      "identifier": [
+        3,
+        3
+      ],
+      "docs": [
+        2,
+        2
+      ]
+    }
+  },
+  "4. hybrid + reranker": {
+    "hit": 0.7916666666666666,
+    "mrr": 0.6284722222222222,
+    "n": 24,
+    "latency_s": 1.9761211375395458,
+    "by_type": {
+      "direct": [
+        13,
+        15
+      ],
+      "vocab": [
+        1,
+        4
+      ],
+      "identifier": [
+        3,
+        3
+      ],
+      "docs": [
+        2,
+        2
+      ]
+    }
+  },
+  "5. reranker + code preference": {
+    "hit": 0.875,
+    "mrr": 0.7124999999999999,
+    "n": 24,
+    "latency_s": 1.8746165931224823,
+    "by_type": {
+      "direct": [
+        15,
+        15
+      ],
+      "vocab": [
+        2,
+        4
+      ],
+      "identifier": [
+        3,
+        3
+      ],
+      "docs": [
+        1,
+        2
+      ]
+    }
+  },
+  "6. full (rewrite + rerank + code)": {
+    "hit": 0.9166666666666666,
+    "mrr": 0.7583333333333333,
+    "n": 24,
+    "latency_s": 3.0840692023436227,
+    "by_type": {
+      "direct": [
+        15,
+        15
+      ],
+      "vocab": [
+        4,
+        4
+      ],
+      "identifier": [
+        3,
+        3
+      ],
+      "docs": [
+        0,
+        2
+      ]
+    }
+  }
+}

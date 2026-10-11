@@ -104,3 +104,9 @@ def chunk_file(root, rel_path):
     if language == "python":
         return chunk_python(rel_path, source)
     return chunk_text(rel_path, source, language)
+
+def chunk_file_fixed(root, rel_path):
+    """Baseline: ignore code structure and split every file into fixed-size windows."""
+    source = (Path(root) / rel_path).read_text(encoding="utf-8", errors="ignore")
+    language = config.EXTENSIONS[Path(rel_path).suffix]
+    return chunk_text(rel_path, source, language, kind="fixed")

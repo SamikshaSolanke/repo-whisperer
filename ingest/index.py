@@ -8,6 +8,7 @@ from tqdm import tqdm
 import config
 from ingest.chunk import chunk_file
 from ingest.walk import walk_repo
+from ingest.chunk import chunk_file, chunk_file_fixed
 BATCH = 64
 
 
@@ -46,14 +47,21 @@ def main():
     ap.add_argument("--repo", required=True, help="e.g. pallets/flask")
     ap.add_argument("--path", required=True, help="local clone, e.g. data/repos/flask")
     ap.add_argument("--recreate", action="store_true", help="wipe the collection first")
+    ap.add_argument("--chunker", choices=["ast", "fixed"], default="ast")
+    ap.add_argument("--collection", help="defaults to 'code' (ast) or 'code_fixed' (fixed)")
+
     args = ap.parse_args()
+
+    config.COLLECTION = args.collection or ("code_fixed" if args.chunker == "fixed" else config.COLLECTION)
+    chunker = chunk_file_fixed if args.chunker == "fixed" else chunk_file
 
     root = Path(args.path)
     sha = git.Repo(root).head.commit.hexsha
     print(f"Repo {args.repo} @ {sha}")
 
     files = walk_repo(root)
-    chunks = [c for f in files for c in chunk_file(root, f)]
+    # chunks = [c for f in files for c in chunk_file(root, f)]
+    chunks = [c for f in files for c in chunker(root, f)]
     print(f"{len(files)} files -> {len(chunks)} chunks")
 
     client = get_client()

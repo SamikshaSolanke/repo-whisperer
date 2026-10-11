@@ -1,0 +1,82 @@
+{
+  "3. hybrid + query rewriting": {
+    "hit": 1.0,
+    "mrr": 0.775,
+    "n": 10,
+    "latency_s": 0.9625475168228149,
+    "by_type": {
+      "vocab": [
+        4,
+        4
+      ],
+      "identifier": [
+        3,
+        3
+      ],
+      "docs": [
+        3,
+        3
+      ]
+    }
+  },
+  "1. AST chunks, dense only": {
+    "hit": 1.0,
+    "mrr": 0.8166666666666667,
+    "n": 10,
+    "latency_s": 0.3382046937942505,
+    "by_type": {
+      "vocab": [
+        4,
+        4
+      ],
+      "identifier": [
+        3,
+        3
+      ],
+      "docs": [
+        3,
+        3
+      ]
+    }
+  },
+  "2. + BM25 hybrid": {
+    "hit": 0.9,
+    "mrr": 0.6583333333333333,
+    "n": 10,
+    "latency_s": 0.3231560945510864,
+    "by_type": {
+      "vocab": [
+        3,
+        4
+      ],
+      "identifier": [
+        3,
+        3
+      ],
+      "docs": [
+        3,
+        3
+      ]
+    }
+  },
+  "0. Fixed chunks, dense only": {
+    "hit": 0.9,
+    "mrr": 0.6066666666666667,
+    "n": 10,
+    "latency_s": 0.28238472938537595,
+    "by_type": {
+      "vocab": [
+        4,
+        4
+      ],
+      "identifier": [
+        2,
+        3
+      ],
+      "docs": [
+        3,
+        3
+      ]
+    }
+  }
+}
