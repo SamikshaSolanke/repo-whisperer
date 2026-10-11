@@ -91,9 +91,12 @@ def with_retry(fn, tries=3):
     for i in range(tries):
         try:
             return fn()
-        except Exception as e:            # rate limits are common on free tiers
-            print(f"   retry {i + 1}: {e}")
-            time.sleep(10 * (i + 1))
+        except Exception as e:
+            msg = str(e)
+            if "tokens per day" in msg:
+                raise SystemExit("Daily Groq token limit reached. Progress is saved; re-run later to resume.")
+            print(f"   retry {i + 1}: {msg[:120]}")
+            time.sleep(15 * (i + 1))
     return None
 
 
@@ -117,9 +120,16 @@ def main():
     qs = [q for q in data["questions"] if args.split in ("all", q.get("split", "dev"))]
     if args.n:
         qs = qs[: args.n]
+        out = f"eval/answers_{args.split}.json"
+    try:
+        results = json.load(open(out))
+    except FileNotFoundError:
+        results = []
+    done = {r["id"] for r in results}
 
-    results = []
     for q in qs:
+        if q["id"] in done:
+            continue
         print(f"q{q['id']} [{q['type']}] {q['question']}")
         chunks = retrieve(q["question"], k=config.TOP_K, repo=data["repo"], **BEST)
         answer = with_retry(lambda: "".join(answer_stream(q["question"], chunks))) or ""
@@ -131,7 +141,9 @@ def main():
             if j and j.get("total"):
                 rec["faithfulness"] = min(1.0, j["supported"] / j["total"])
                 rec["unsupported"] = j.get("unsupported", [])
+        
         results.append(rec)
+        json.dump(results, open(out, "w"), indent=2)
         time.sleep(2)
 
     neg = [r for r in results if r["type"] == "negative"]
