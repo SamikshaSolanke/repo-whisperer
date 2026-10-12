@@ -1,0 +1,166 @@
+[
+  {
+    "id": 17,
+    "type": "vocab",
+    "question": "How does Flask decide which function handles an incoming URL?",
+    "refused": false,
+    "cited": [
+      3,
+      5
+    ],
+    "answer": "Flask first builds a **URL map** from every rule that was registered with\u202f`app.route` (or `add_url_rule`). Each rule stores an *endpoint* name, and the endpoint is mapped to the actual view callable in the application\u2019s `view_functions` dictionary.\n\nWhen a request arrives, Flask **matches the request URL against the registered rules** in that map. If a rule matches, Flask looks up the rule\u2019s endpoint and calls the view function associated with that endpoint. As the lifecycle documentation explains, \u201cThe URL is matched against the URL rules registered with the :meth:`~.Flask.route` decorator\u2026 The :meth:`~.Flask.route` decorated view function associated with the matched URL is called\u201d\u202f[3]. The registration process that ties an endpoint to a view function is described in `Scaffold.add_url_rule`: the endpoint defaults to the view function\u2019s name, and the rule is stored so that later \u201cthe endpoint name \u2026 is used \u2026 when routing and building URLs\u201d\u202f[5].",
+    "faithfulness": 0.6666666666666666,
+    "unsupported": [
+      "Flask builds a URL map from every rule that was registered",
+      "Each rule stores an endpoint name, and the endpoint is mapped to the actual view callable in the application\u2019s view_functions dictionary"
+    ]
+  },
+  {
+    "id": 19,
+    "type": "vocab",
+    "question": "How does Flask turn whatever a view returns into an HTTP response?",
+    "refused": false,
+    "cited": [
+      1,
+      2,
+      4,
+      5
+    ],
+    "answer": "Flask first lets the view (or an error handler) return any Python object.  \nWhen the request cycle reaches the conversion step, the helper `flask.make_response` forwards the value to the application\u2019s `Flask.make_response` method, which inspects the type and builds a proper **Response** object:\n\n* If the value is already an instance of the app\u2019s `response_class`, it is returned unchanged.  \n* If it is a **string**, **bytes**, **bytearray**, or an iterator/generator of those, Flask creates a new `response_class` instance with that data and lets the class set the default status and headers.  \n* If it is a **dict** or **list**, Flask calls the JSON serializer (`self.json.response`) to produce a JSON response.  \n* If it is a `BaseResponse` instance or any callable (a WSGI app), Flask coerces it to the correct response type with `response_class.force_type`.  \n* Anything else raises a `TypeError` because Flask cannot turn it into a response.\n\nThese rules are documented in the \u201cAbout Responses\u201d section, which lists the same conversion order (response object \u2192 string \u2192 iterator \u2192 dict/list \u2192 tuple \u2192 WSGI app)\u202f[1][2].  \n\nDuring the request lifecycle, `Flask.dispatch_request` returns the raw view value, and later the framework calls `make_response` to perform the conversion, ultimately yielding a `Response` object that the WSGI server sends back to the client\u202f[4][5].",
+    "faithfulness": 1.0,
+    "unsupported": []
+  },
+  {
+    "id": 21,
+    "type": "vocab",
+    "question": "How does Flask read settings from environment variables?",
+    "refused": false,
+    "cited": [
+      1,
+      2,
+      3,
+      6
+    ],
+    "answer": "Flask reads configuration that is stored in the process environment in two ways:\n\n1. **Directly from prefixed environment variables** \u2013 the `Config.from_prefixed_env` method scans `os.environ` for keys that start with a given prefix (default\u202f`FLASK_`).  \n   * It removes the prefix, optionally parses the string value with `json.loads` (or a custom loader), and stores the result in the app\u2019s config dictionary.  \n   * Nested configuration can be expressed with double\u2011underscores (`__`) which are turned into nested dictionaries.  \n   * The method returns `True` when it finishes loading.  \n\n   ```python\n   def from_prefixed_env(self, prefix: str = \"FLASK\", *, loads: t.Callable[[str], t.Any] = json.loads) -> bool:\n       \"\"\"Load any environment variables that start with ``FLASK_``, dropping the prefix \u2026\"\"\"\n       prefix = f\"{prefix}_\"\n       for key in sorted(os.environ):\n           if not key.startswith(prefix):\n               continue\n           value = os.environ[key]\n           key = key.removeprefix(prefix)\n           try:\n               value = loads(value)\n           except Exception:\n               pass\n           if \"__\" not in key:\n               self[key] = value\n               continue\n           # \u2026handle nested keys\u2026\n   ```  \n   [6]\n\n   The documentation shows the typical usage:\n\n   ```python\n   app.config.from_prefixed_env()\n   app.config[\"SECRET_KEY\"]  # \u2192 \"5f352379324c22463451387a0aec5d2f\"\n   ```  \n   The default prefix is ``FLASK_`` and can be changed with the `prefix` argument.  \n   [1]\n\n2. **Via an environment variable that points to a configuration file** \u2013 `Config.from_envvar` looks up a single environment variable, reads its value as a file path, and then loads that file with `from_pyfile`.  \n\n   ```python\n   def from_envvar(self, variable_name: str, silent: bool = False) -> bool:\n       rv = os.environ.get(variable_name)\n       if not rv:\n           if silent:\n               return False\n           raise RuntimeError(\n               f\"The environment variable {variable_name!r} is not set\"\n               \" and as such configuration could not be loaded\u2026\"\n           )\n       return self.from_pyfile(rv, silent=silent)\n   ```  \n   [2]\n\n3. **Early loading of an `.env`/`.flaskenv` file** \u2013 the CLI option `--env-file` (or `-e`) triggers `_env_file_callback`, which imports **python\u2011dotenv** and calls `load_dotenv` so that variables defined in a file become part of `os.environ` before any other options are processed.  \n\n   ```python\n   _env_file_option = click.Option(\n       [\"-e\", \"--env-file\"],\n       type=click.Path(exists=True, dir_okay=False),\n       help=(\n           \"Load environment variables from this file, taking precedence over\"\n           \" those set by '.env' and '.flaskenv'. Variables set directly in the\"\n           \" environment take highest precedence.\"\n       ),\n       is_eager=True,\n       expose_value=False,\n       callback=_env_file_callback,\n   )\n   ```  \n   [3]\n\nIn practice, a developer can either set variables like `FLASK_SECRET_KEY=\u2026` in the shell (or in an env file) and call `app.config.from_prefixed_env()`, or set a variable such as `YOURAPPLICATION_SETTINGS=/path/to/settings.cfg` and call `app.config.from_envvar('YOURAPPLICATION_SETTINGS')`. Both mechanisms pull values from the environment into Flask\u2019s configuration object.",
+    "faithfulness": 0.875,
+    "unsupported": [
+      "The method returns True when it finishes loading."
+    ]
+  },
+  {
+    "id": 23,
+    "type": "vocab",
+    "question": "How does Flask let a user download a file from the server?",
+    "refused": false,
+    "cited": [
+      1,
+      4
+    ],
+    "answer": "Flask serves files to a client by using the helper functions **`send_file`** or the higher\u2011level **`send_from_directory`**.  \nA typical pattern is to expose a route that receives the filename (or path) and returns the file with `send_from_directory`, which safely joins the requested name to a known upload folder and then calls `send_file` under the hood.\n\n```python\nfrom flask import send_from_directory\n\n@app.route('/uploads/<name>')\ndef download_file(name):\n    return send_from_directory(app.config[\"UPLOAD_FOLDER\"], name)\n```\n\n`send_from_directory` is a wrapper around Werkzeug\u2019s `send_from_directory` that:\n\n* Joins the client\u2011supplied `path` to a trusted `directory` using `safe_join` to prevent directory\u2011traversal attacks.  \n* Calls `send_file` to actually stream the file, passing any Flask\u2011specific arguments.  \n* Raises a 404 error if the resolved path is not an existing regular file.  \n\n(See the implementation and description in the source: `send_from_directory` in *src/flask/helpers.py*\u202f[4] and the example usage in the documentation\u202f[1].)  \n\nThus, by defining a view that returns `send_from_directory` (or directly `send_file`), Flask lets a user download a file from the server.",
+    "faithfulness": 1.0,
+    "unsupported": []
+  },
+  {
+    "id": 25,
+    "type": "identifier",
+    "question": "What does Flask.full_dispatch_request do?",
+    "refused": false,
+    "cited": [
+      1
+    ],
+    "answer": "`Flask.full_dispatch_request` is the core request\u2011handling routine. It  \n\n* Sends the **request_started** signal.  \n* Calls **preprocess_request**; if that returns `None` it then calls **dispatch_request** to run the view.  \n* Catches any exception raised by the view or preprocessing and passes it to **handle_user_exception**.  \n* Finally passes the resulting value to **finalize_request** and returns the resulting **Response** object.  \n\nThe method also emits a deprecation warning the first time a request is handled if the app defines the now\u2011removed `should_ignore_error` attribute, and it marks that the first request has been processed.  \n\nAll of this is shown in the implementation:\n\n```python\ndef full_dispatch_request(self, ctx: AppContext) -> Response:\n    \"\"\"Dispatches the request and on top of that performs request\n    pre and postprocessing as well as HTTP exception catching and\n    error handling.\"\"\"\n    if not self._got_first_request and self.should_ignore_error is not None:\n        import warnings\n        warnings.warn(\n            \"The 'should_ignore_error' method is deprecated ...\",\n            DeprecationWarning,\n            stacklevel=1,\n        )\n    self._got_first_request = True\n\n    try:\n        request_started.send(self, _async_wrapper=self.ensure_sync)\n        rv = self.preprocess_request(ctx)\n        if rv is None:\n            rv = self.dispatch_request(ctx)\n    except Exception as e:\n        rv = self.handle_user_exception(ctx, e)\n    return self.finalize_request(ctx, rv)\n```[1]",
+    "faithfulness": 1.0,
+    "unsupported": []
+  },
+  {
+    "id": 27,
+    "type": "identifier",
+    "question": "What is DispatchingJinjaLoader used for?",
+    "refused": false,
+    "cited": [
+      1,
+      4,
+      5,
+      6
+    ],
+    "answer": "DispatchingJinjaLoader is a Jinja\u202floader that \u201clooks for templates in the application and all the blueprint folders\u201d\u202f\u2014 it dispatches template loading between the app\u2019s own loader and each blueprint\u2019s loader. It iterates over those loaders to fetch a template\u2019s source (`_get_source_fast`) and to collect all available template names (`list_templates`).\u202f[1][4][5][6]",
+    "faithfulness": 1.0,
+    "unsupported": []
+  },
+  {
+    "id": 29,
+    "type": "identifier",
+    "question": "What is _AppCtxGlobals?",
+    "refused": false,
+    "cited": [
+      1,
+      6
+    ],
+    "answer": "_AppCtxGlobals is a simple class defined in **src/flask/ctx.py** that acts as a plain object used as a namespace for storing data during an application context. When an app context is created Flask automatically creates an instance of this class and exposes it through the :data:`g` proxy. The class provides attribute access methods (`__getattr__`, `__setattr__`, `__delattr__`, etc.) and container\u2011like helpers (`get`, `pop`, `setdefault`, `__contains__`, `__iter__`, `__repr__`)\u202f[1].  \n\nIn the Flask documentation it is described as the default type for the object returned by :attr:`.Flask.app_ctx_globals_class`, which the :data:`g` proxy references to store request\u2011 or app\u2011specific data\u202f[6].",
+    "faithfulness": 1.0,
+    "unsupported": []
+  },
+  {
+    "id": 31,
+    "type": "docs",
+    "question": "How should I handle file uploads securely?",
+    "refused": false,
+    "cited": [
+      1,
+      2,
+      3,
+      5,
+      6
+    ],
+    "answer": "Handle file uploads in Flask by following the pattern shown in the documentation:\n\n1. **Configure an upload folder and a whitelist of extensions**  \n   ```python\n   UPLOAD_FOLDER = '/path/to/the/uploads'\n   ALLOWED_EXTENSIONS = {'txt', 'pdf', 'png', 'jpg', 'jpeg', 'gif'}\n\n   app = Flask(__name__)\n   app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER\n   ```  \n   The folder is where files are stored and the set limits which extensions are accepted\u202f[2].\n\n2. **Optionally limit the request size**  \n   ```python\n   app.config['MAX_CONTENT_LENGTH'] = 16 * 1000 * 1000   # 16\u202fMB\n   ```  \n   This prevents overly large uploads from consuming unlimited memory\u202f[6].\n\n3. **Validate the filename\u2019s extension**  \n   ```python\n   def allowed_file(filename):\n       return '.' in filename and \\\n              filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS\n   ```  \n   The helper checks that the name contains a dot and that the suffix is in the whitelist\u202f[1][2].\n\n4. **Secure the client\u2011provided filename**  \n   ```python\n   from werkzeug.utils import secure_filename\n   \u2026\n   if file and allowed_file(file.filename):\n       filename = secure_filename(file.filename)\n   ```  \n   `secure_filename` strips dangerous characters and normalises the name (e.g.  \n   `secure_filename('../../../../home/username/.bashrc')` \u2192 `'home_username_.bashrc'`)\u202f[3][5].\n\n5. **Save the file inside the configured folder**  \n   ```python\n   file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))\n   ```  \n   The file is written only after it has passed the extension check and been sanitized\u202f[1].\n\n6. **Never trust the raw filename** \u2013 always run it through `secure_filename` before using it on the filesystem, as the documentation warns that filenames can be forged and may contain path\u2011traversal sequences\u202f[5][3].\n\nPutting it together, a typical upload view looks like:\n\n```python\n@app.route('/', methods=['GET', 'POST'])\ndef upload_file():\n    if request.method == 'POST':\n        if 'file' not in request.files:\n            flash('No file part')\n            return redirect(request.url)\n        file = request.files['file']\n        if file.filename == '':\n            flash('No selected file')\n            return redirect(request.url)\n        if file and allowed_file(file.filename):\n            filename = secure_filename(file.filename)\n            file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))\n            return redirect(url_for('download_file', name=filename))\n    # return upload form \u2026\n```\n\nFollowing these steps\u2014using `enctype=\"multipart/form-data\"`, validating extensions, sanitising the filename with `secure_filename`, storing only in a dedicated folder, and optionally limiting upload size\u2014ensures file uploads are handled securely.",
+    "faithfulness": 1.0,
+    "unsupported": []
+  },
+  {
+    "id": 33,
+    "type": "docs",
+    "question": "How do I configure logging in a Flask app?",
+    "refused": false,
+    "cited": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ],
+    "answer": "Configure logging **before** you create the Flask application, using the standard Python\u202f`logging` facilities. A typical approach is to call `logging.config.dictConfig` with a formatter, a handler that writes to Flask\u2019s WSGI error stream, and a root logger level, then instantiate the app:\n\n```python\nfrom logging.config import dictConfig\n\ndictConfig({\n    'version': 1,\n    'formatters': {'default': {\n        'format': '[%(asctime)s] %(levelname)s in %(module)s: %(message)s',\n    }},\n    'handlers': {'wsgi': {\n        'class': 'logging.StreamHandler',\n        'stream': 'ext://flask.logging.wsgi_errors_stream',\n        'formatter': 'default'\n    }},\n    'root': {\n        'level': 'INFO',\n        'handlers': ['wsgi']\n    }\n})\n\napp = Flask(__name__)\n```\n[1]\n\nIf you access `app.logger` before configuring logging, Flask will automatically add a default `StreamHandler` that writes to the WSGI server\u2019s error stream (usually `sys.stderr`). This default handler is defined in `flask.logging` as `default_handler` and is added by `create_logger` when no handler for the logger\u2019s effective level exists.  \n[3][6][2]\n\nTo **remove** that automatically\u2011added handler after you have configured logging, import `default_handler` and call `app.logger.removeHandler(default_handler)`.  \n[2]\n\nYou can also extend the configuration, for example:\n\n* **Email errors** \u2013 add an `SMTPHandler` and attach it to `app.logger` when the app is not in debug mode.  \n[2]\n\n* **Inject request information** \u2013 subclass `logging.Formatter`, set `record.url` and `record.remote_addr` when a request context is present, and assign the formatter to `default_handler` (or any other handler).  \n[4]\n\nThe `App.logger` property simply returns the logger created by `create_logger`, which ensures the logger name matches `app.name`, sets the level to `DEBUG` when `app.debug` is true, and adds the default handler if needed.  \n[5]\n\nIn summary, configure logging early with `dictConfig` (or any standard logging setup), optionally remove the default handler, and add any additional handlers or formatters you need. The configured logger will then be available as `app.logger`.",
+    "faithfulness": 1.0,
+    "unsupported": []
+  },
+  {
+    "id": 34,
+    "type": "docs",
+    "question": "How do I use SQLAlchemy with Flask?",
+    "refused": false,
+    "cited": [
+      1,
+      2,
+      4
+    ],
+    "answer": "You can integrate SQLAlchemy into a Flask project in two common ways.\n\n### 1.\u202fUse the **Flask\u2011SQLAlchemy** extension  \n\nCreate the extension object without binding it to an app, then bind it inside the factory:\n\n```python\n# model.py (or equivalent)\ndb = SQLAlchemy()\n```\n\n```python\n# application.py (or equivalent)\ndef create_app(config_filename):\n    app = Flask(__name__)\n    app.config.from_pyfile(config_filename)\n\n    from yourapplication.model import db\n    db.init_app(app)          # \u2190 bind the extension to the app\n    \u2026\n    return app\n```\n\nThis keeps the extension object reusable across multiple applications\u202f[4].\n\n### 2.\u202fUse **plain SQLAlchemy** with the declarative pattern  \n\n1. **Set up the engine, session and base** (e.g. in `database.py`):\n\n```python\nfrom sqlalchemy import create_engine\nfrom sqlalchemy.orm import scoped_session, sessionmaker, declarative_base\n\nengine = create_engine('sqlite:////tmp/test.db')\ndb_session = scoped_session(sessionmaker(autocommit=False,\n                                         autoflush=False,\n                                         bind=engine))\nBase = declarative_base()\nBase.query = db_session.query_property()\n```\n\n2. **Create a helper to initialise the tables**:\n\n```python\ndef init_db():\n    # import all modules that define models so they are registered\n    import yourapplication.models\n    Base.metadata.create_all(bind=engine)\n```\n\n3. **Register a teardown handler so the session is removed after each request**:\n\n```python\nfrom yourapplication.database import db_session\n\n@app.teardown_appcontext\ndef shutdown_session(exception=None):\n    db_session.remove()\n```\n\n4. **Define models by subclassing the `Base` class**:\n\n```python\nfrom sqlalchemy import Column, Integer, String\nfrom yourapplication.database import Base\n\nclass User(Base):\n    __tablename__ = 'users'\n    id = Column(Integer, primary_key=True)\n    name = Column(String(50), unique=True)\n    email = Column(String(120), unique=True)\n\n    def __init__(self, name=None, email=None):\n        self.name = name\n        self.email = email\n\n    def __repr__(self):\n        return f'<User {self.name!r}>'\n```\n\n5. **Create the database and work with it**:\n\n```python\n>>> from yourapplication.database import init_db\n>>> init_db()                     # creates tables\n\n>>> from yourapplication.database import db_session\n>>> from yourapplication.models import User\n>>> u = User('admin', 'admin@localhost')\n>>> db_session.add(u)\n>>> db_session.commit()\n\n>>> User.query.all()              # simple query\n[<User 'admin'>]\n```\n\nThese steps show the two recommended patterns for using SQLAlchemy with Flask\u202f[1][2][4].",
+    "faithfulness": 1.0,
+    "unsupported": []
+  },
+  {
+    "id": 37,
+    "type": "negative",
+    "question": "How does Flask implement rate limiting for API endpoints?",
+    "refused": true,
+    "cited": [],
+    "answer": "I couldn't find this in the indexed code. The provided excerpts cover the `Request.max_content_length` property and its configuration (`MAX_CONTENT_LENGTH`), the `stream_with_context` helper, documentation on Celery integration, web\u2011security considerations (including resource\u2011use settings), and MongoEngine usage, but none discuss rate\u2011limiting implementation for API endpoints."
+  },
+  {
+    "id": 38,
+    "type": "negative",
+    "question": "How does Flask support OAuth2 login with Google?",
+    "refused": true,
+    "cited": [],
+    "answer": "I couldn't find this in the indexed code. The excerpts include documentation of hosting platforms, the `login` and `register` view functions from the tutorial example, the Flask application class initialization, and the module imports for the authentication blueprint."
+  }
+]

@@ -74,27 +74,31 @@ import argparse
 import json
 import re
 import time
+from pathlib import Path
 from groq import Groq
 import config
 from query.answer import answer_stream, cited_indices
 from query.retrieve import retrieve
 
+# Must match the default pipeline chosen on the dev split (row 3)
 BEST = dict(hybrid=True, rewrite=True, rerank=False, prefer_code=False)
 REFUSAL = "I couldn't find this in the indexed code"
+JUDGE_MODEL = getattr(config, "JUDGE_MODEL", config.GROQ_MODEL)
 
 JUDGE = """You check whether an answer about a codebase is supported by the code excerpts it was given.
 Split the answer into its factual claims. For each claim, decide whether the excerpts support it.
 Return ONLY JSON: {"total": <int>, "supported": <int>, "unsupported": [<short strings>]}"""
 
 
-def with_retry(fn, tries=3):
+def with_retry(fn, tries=5):
     for i in range(tries):
         try:
             return fn()
         except Exception as e:
             msg = str(e)
             if "tokens per day" in msg:
-                raise SystemExit("Daily Groq token limit reached. Progress is saved; re-run later to resume.")
+                raise SystemExit("Daily Groq token limit reached. Progress is saved; "
+                                 "re-run later to resume.")
             print(f"   retry {i + 1}: {msg[:120]}")
             time.sleep(15 * (i + 1))
     return None
@@ -103,11 +107,26 @@ def with_retry(fn, tries=3):
 def judge(question, chunks, answer):
     ctx = "\n\n".join(f"[{i}] {c['path']}\n{c['text']}" for i, c in enumerate(chunks, 1))
     r = Groq(api_key=config.GROQ_API_KEY).chat.completions.create(
-        model=config.GROQ_MODEL, temperature=0, max_tokens=1500, reasoning_effort="low",
+        model=JUDGE_MODEL, temperature=0, max_tokens=1500, reasoning_effort="low",
         messages=[{"role": "system", "content": JUDGE},
-                  {"role": "user", "content": f"Excerpts:\n{ctx}\n\nQuestion: {question}\n\nAnswer:\n{answer}"}])
+                  {"role": "user",
+                   "content": f"Excerpts:\n{ctx}\n\nQuestion: {question}\n\nAnswer:\n{answer}"}])
     m = re.search(r"\{.*\}", r.choices[0].message.content or "", re.S)
     return json.loads(m.group(0)) if m else None
+
+
+def summarize(results):
+    neg = [r for r in results if r["type"] == "negative"]
+    pos = [r for r in results if r["type"] != "negative"]
+    answered = [r for r in pos if not r["refused"]]
+    faith = [r["faithfulness"] for r in pos if "faithfulness" in r]
+    print("\n--- Generation results ---")
+    print(f"Questions scored: {len(results)}")
+    print(f"Correct refusals on negatives: {sum(r['refused'] for r in neg)}/{len(neg)}")
+    print(f"False refusals on answerable:  {sum(r['refused'] for r in pos)}/{len(pos)}")
+    print(f"Answers with a valid citation: {sum(bool(r['cited']) for r in answered)}/{len(answered)}")
+    if faith:
+        print(f"Mean faithfulness (LLM judge): {sum(faith) / len(faith):.2f} over {len(faith)} answers")
 
 
 def main():
@@ -120,44 +139,39 @@ def main():
     qs = [q for q in data["questions"] if args.split in ("all", q.get("split", "dev"))]
     if args.n:
         qs = qs[: args.n]
-        out = f"eval/answers_{args.split}.json"
-    try:
-        results = json.load(open(out))
-    except FileNotFoundError:
-        results = []
+
+    # Resume support: keep earlier successful answers, retry the ones that failed
+    out_path = Path(f"eval/answers_{args.split}.json")
+    results = json.loads(out_path.read_text()) if out_path.exists() else []
+    results = [r for r in results if not r.get("error")]
     done = {r["id"] for r in results}
+    if done:
+        print(f"Resuming: {len(done)} question(s) already answered in {out_path}")
 
     for q in qs:
         if q["id"] in done:
             continue
         print(f"q{q['id']} [{q['type']}] {q['question']}")
         chunks = retrieve(q["question"], k=config.TOP_K, repo=data["repo"], **BEST)
-        answer = with_retry(lambda: "".join(answer_stream(q["question"], chunks))) or ""
+        answer = with_retry(lambda: "".join(answer_stream(q["question"], chunks)))
+        if answer is None or not answer.strip():
+            print("   FAILED after retries; skipped (re-run to retry it)")
+            continue
+
         refused = REFUSAL.lower() in answer.lower()
         rec = {"id": q["id"], "type": q["type"], "question": q["question"],
-               "refused": refused, "cited": cited_indices(answer, len(chunks)), "answer": answer}
-        if q["type"] != "negative" and answer and not refused:
+               "refused": refused, "cited": cited_indices(answer, len(chunks)),
+               "answer": answer}
+        if q["type"] != "negative" and not refused:
             j = with_retry(lambda: judge(q["question"], chunks, answer))
             if j and j.get("total"):
                 rec["faithfulness"] = min(1.0, j["supported"] / j["total"])
                 rec["unsupported"] = j.get("unsupported", [])
-        
         results.append(rec)
-        json.dump(results, open(out, "w"), indent=2)
-        time.sleep(2)
+        out_path.write_text(json.dumps(results, indent=2))   # save after every question
+        time.sleep(20)                                        # stay under the per-minute limit
 
-    neg = [r for r in results if r["type"] == "negative"]
-    pos = [r for r in results if r["type"] != "negative"]
-    faith = [r["faithfulness"] for r in pos if "faithfulness" in r]
-    print("\n--- Generation results ---")
-    print(f"Correct refusals on negatives: {sum(r['refused'] for r in neg)}/{len(neg)}")
-    print(f"False refusals on answerable:  {sum(r['refused'] for r in pos)}/{len(pos)}")
-    print(f"Answers with a valid citation: {sum(bool(r['cited']) for r in pos if not r['refused'])}"
-          f"/{sum(not r['refused'] for r in pos)}")
-    if faith:
-        print(f"Mean faithfulness (LLM judge): {sum(faith) / len(faith):.2f} over {len(faith)} answers")
-
-    json.dump(results, open(f"eval/answers_{args.split}.json", "w"), indent=2)
+    summarize(results)
 
 
 if __name__ == "__main__":

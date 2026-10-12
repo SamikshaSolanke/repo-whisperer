@@ -11,6 +11,7 @@ DENSE_MODEL = "BAAI/bge-small-en-v1.5"   # 384 dims
 SPARSE_MODEL = "Qdrant/bm25"
 RERANK_MODEL = "jinaai/jina-reranker-v1-tiny-en"
 GROQ_MODEL = "openai/gpt-oss-120b"   # check Groq's console for current model names
+JUDGE_MODEL = "openai/gpt-oss-20b"   # separate model = separate rate-limit quota
 
 MAX_FILE_BYTES = 100_000
 REPOS_DIR = "data/repos"

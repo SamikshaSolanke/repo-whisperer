@@ -1,0 +1,350 @@
+[
+  {
+    "id": 1,
+    "type": "direct",
+    "question": "How do I load configuration values from a Python object or class?",
+    "refused": false,
+    "cited": [
+      1,
+      2
+    ],
+    "answer": "Use the `Config.from_object` method on the Flask app\u2019s config.  \nIt accepts either a dotted import string or an actual object reference (module or class). The method imports the object when a string is given, then iterates over `dir(obj)` and copies every attribute whose name is uppercase into the config dict.\n\n```python\n# Load from a string import name\napp.config.from_object('configmodule.ProductionConfig')\n\n# Load from a class object (no instantiation)\napp.config.from_object(ProductionConfig)\n\n# If the class defines @property attributes, instantiate it first\nfrom configmodule import ProductionConfig\napp.config.from_object(ProductionConfig())\n```\n\nOnly the uppercase attributes of the module or class are added to the configuration. The object is not instantiated automatically; you must instantiate it yourself when you need to evaluate properties.\u202f[1][2]",
+    "faithfulness": 1.0,
+    "unsupported": []
+  },
+  {
+    "id": 2,
+    "type": "direct",
+    "question": "How does the flash() function store messages for the next request?",
+    "refused": false,
+    "cited": [
+      2
+    ],
+    "answer": "The `flash()` helper saves the message in the user\u2019s session under the key **\"_flashes\"**. It retrieves any existing list with `session.get(\"_flashes\", [])`, appends a `(category, message)` tuple, and then writes the updated list back to the session:\n\n```python\nflashes = session.get(\"_flashes\", [])\nflashes.append((category, message))\nsession[\"_flashes\"] = flashes\n```\n\nThis stored list is later read by `get_flashed_messages()` on the next request.\u202f[2]",
+    "faithfulness": 1.0,
+    "unsupported": []
+  },
+  {
+    "id": 3,
+    "type": "direct",
+    "question": "How does jsonify create a JSON response?",
+    "refused": false,
+    "cited": [
+      1,
+      3
+    ],
+    "answer": "`jsonify` is just a thin wrapper that forwards the data to the current app\u2019s JSON provider.  \n\n```python\ndef jsonify(*args, **kwargs):\n    \u2026\n    return current_app.json.response(*args, **kwargs)  # type: ignore[return-value]\n```\n[1]\n\n`current_app.json` is an instance of `JSONProvider`. Its `response` method builds the response:\n\n```python\ndef response(self, *args, **kwargs):\n    \u2026\n    obj = self._prepare_response_obj(args, kwargs)\n    return self._app.response_class(self.dumps(obj),\n                                    mimetype=\"application/json\")\n```\n[3]\n\nSo `jsonify` creates a JSON response by:\n\n1. Calling `JSONProvider.response` with the supplied arguments.  \n2. The provider prepares the object to serialize, dumps it to a JSON string, and returns a Flask `Response` object whose `mimetype` is set to `\"application/json\"`.  \n\nAn active application context is required for `current_app` to be available.",
+    "faithfulness": 1.0,
+    "unsupported": []
+  },
+  {
+    "id": 4,
+    "type": "direct",
+    "question": "How does render_template find and render a template by name?",
+    "refused": false,
+    "cited": [
+      4,
+      5,
+      6
+    ],
+    "answer": "`render_template` first gets the current application context and then asks Flask\u2019s Jinja environment to locate the requested template:\n\n```python\nctx = app_ctx._get_current_object()\ntemplate = ctx.app.jinja_env.get_or_select_template(template_name_or_list)\n```\n\n`get_or_select_template` (provided by Jinja) searches the loader hierarchy, which includes the application\u2019s loader and each blueprint\u2019s loader (the loaders are combined by `DispatchingJinjaLoader.list_templates` that gathers templates from the app and all registered blueprints)\u202f[4].\n\nOnce the `Template` object is found, `render_template` delegates to the internal `_render` helper:\n\n```python\nreturn _render(ctx, template, context)\n```\n\n`_render` updates the template context with Flask\u2011specific values, emits the `before_render_template` signal, renders the template with the supplied `context`, emits the `template_rendered` signal, and returns the rendered string:\n\n```python\napp.update_template_context(ctx, context)\nbefore_render_template.send(...)\nrv = template.render(context)\ntemplate_rendered.send(...)\nreturn rv\n```\n\nThus, `render_template` locates the template via the Jinja environment\u2019s loader chain and then renders it with the given context, wrapping the process with Flask\u2019s context updates and signals.\u202f[5][6]",
+    "faithfulness": 1.0,
+    "unsupported": []
+  },
+  {
+    "id": 5,
+    "type": "direct",
+    "question": "How does send_from_directory prevent access to files outside the given directory?",
+    "refused": false,
+    "cited": [
+      1
+    ],
+    "answer": "`send_from_directory` builds the file path with **Werkzeug\u2019s** `safe_join`.  \nThe helper calls `werkzeug.utils.send_from_directory`, which internally uses `werkzeug.security.safe_join` to join the supplied *directory* and *path* only if the resulting path stays inside the given directory; otherwise a 404 is raised. This prevents a client\u2011crafted path from traversing outside the intended folder\u30101\u3011.",
+    "faithfulness": 1.0,
+    "unsupported": []
+  },
+  {
+    "id": 6,
+    "type": "direct",
+    "question": "What does abort() do and how does it raise an HTTP error?",
+    "refused": false,
+    "cited": [
+      1,
+      3
+    ],
+    "answer": "`abort()` raises an HTTP exception for the given status code.  \nWhen called it first checks if a Flask application context is active; if so it forwards the call to the app\u2019s **aborter** object (`ctx.app.aborter`). After that it always calls Werkzeug\u2019s low\u2011level `abort` function (`_wz_abort`) to actually raise the exception. The aborter that Flask uses is created by `App.make_aborter`, which by default returns an instance of `werkzeug.exceptions.Aborter`\u30101\u2020L1-L13\u3011\u30101\u2020L15-L22\u3011\u30103\u2020L1-L7\u3011. Thus `abort()` ultimately raises a `werkzeug.exceptions.HTTPException` (e.g., 404, 400) either via the app\u2011specific aborter or directly via Werkzeug.",
+    "faithfulness": 1.0,
+    "unsupported": []
+  },
+  {
+    "id": 7,
+    "type": "direct",
+    "question": "How does url_for build a URL for an endpoint?",
+    "refused": false,
+    "cited": [
+      2,
+      3,
+      5
+    ],
+    "answer": "`flask.url_for` works by delegating to the application\u2019s **`Flask.url_for`** method and letting the URL map build the final string.\n\n1. The public helper `flask.url_for` simply forwards all arguments to the current app\u2019s method\u30102\u3011.  \n\n2. Inside **`Flask.url_for`** the function first determines whether there is an active request context:  \n\n   * If a request is active it uses the request\u2019s `url_adapter` and, for a blueprint\u2011relative endpoint (starting with \u201c.\u201d), prefixes the current blueprint name\u30105\u3011.  \n   * If no request is active it creates a temporary adapter with `self.create_url_adapter(None)`; this requires `SERVER_NAME` (and possibly `APPLICATION_ROOT` and `PREFERRED_URL_SCHEME`) and forces `_external` to `True` by default\u30105\u2020L13-L22\u3011\u30103\u2020L9-L15\u3011.  \n\n3. The method then calls `self.inject_url_defaults(endpoint, values)` so any functions registered with `@app.url_defaults` can modify the values\u30103\u2020L23-L24\u3011.\n\n4. The core URL is built by the adapter:\n\n   ```python\n   rv = url_adapter.build(\n       endpoint,\n       values,\n       method=_method,\n       url_scheme=_scheme,\n       force_external=_external,\n   )\n   ```  \n\n   If the build raises a `BuildError`, Flask calls `self.handle_url_build_error` and returns its result instead of propagating the exception\u30103\u2020L27-L34\u3011.\n\n5. After a successful build, an optional anchor is quoted and appended as `#anchor`\u30103\u2020L36-L40\u3011.\n\n6. The resulting string `rv` is returned as the generated URL\u30103\u2020L41\u3011.\n\nThus, `url_for` resolves the endpoint (handling blueprint prefixes), prepares a URL adapter appropriate to the request context, injects default values, builds the URL with the adapter (respecting `_method`, `_scheme`, and `_external`), handles build errors, adds an anchor if requested, and returns the final URL.",
+    "faithfulness": 1.0,
+    "unsupported": []
+  },
+  {
+    "id": 8,
+    "type": "direct",
+    "question": "How does the @app.route decorator register a view function?",
+    "refused": false,
+    "cited": [
+      1,
+      3
+    ],
+    "answer": "The `@app.route` decorator is implemented by **`Scaffold.route`**.  \nWhen the decorator is applied, it creates an inner `decorator` function that:\n\n1. Removes an explicit `endpoint` value from the passed options (if any).  \n2. Calls **`self.add_url_rule`** with the URL rule, the resolved endpoint, the view function `f`, and the remaining options.  \n3. Returns the original view function unchanged.\n\nThus the view function becomes registered through the underlying call to `add_url_rule`, which actually adds the rule to Flask\u2019s URL map.  \n\n```python\ndef decorator(f: T_route) -> T_route:\n    endpoint = options.pop(\"endpoint\", None)\n    self.add_url_rule(rule, endpoint, f, **options)\n    return f\n```\n[1]  \n\n`add_url_rule` then records the rule and associates it with the view function, completing the registration.  \n[3]",
+    "faithfulness": 1.0,
+    "unsupported": []
+  },
+  {
+    "id": 9,
+    "type": "direct",
+    "question": "How are session contents serialized and saved into a signed cookie?",
+    "refused": false,
+    "cited": [
+      5
+    ],
+    "answer": "`SecureCookieSessionInterface.save_session` converts the session data to a signed cookie value and writes it to the response.\n\n1. After confirming the session should be saved, it builds a **signing serializer** with `self.get_signing_serializer(app)`\u202f[5].\n2. The session object is turned into a plain dictionary (`dict(session)`) and passed to the serializer\u2019s `dumps` method, which both **serializes** the data and **cryptographically signs** it\u202f[5].\n3. The resulting string (`val`) is then given to `response.set_cookie`, along with the cookie name, expiration, and other attributes (domain, path, secure, httponly, samesite, etc.)\u202f[5].\n4. A \u201cVary: Cookie\u201d header is added to the response to indicate the response varies on the cookie\u202f[5].\n\nThus, session contents are serialized by `itsdangerous` (via `get_signing_serializer().dumps`) and saved as a signed cookie using `Response.set_cookie`.",
+    "faithfulness": 1.0,
+    "unsupported": []
+  },
+  {
+    "id": 10,
+    "type": "direct",
+    "question": "How does Flask register a blueprint on an application?",
+    "refused": false,
+    "cited": [
+      1,
+      3,
+      5
+    ],
+    "answer": "Flask registers a blueprint in two steps:\n\n1. **The application method** \u2013 `App.register_blueprint` simply forwards the call to the blueprint\u2019s own `register` method, passing the app instance and any options supplied by the user.  \n   ```python\n   blueprint.register(self, options)\n   ```  \n   \u30101\u3011\n\n2. **The blueprint method** \u2013 `Blueprint.register` builds the final registration name (combining any `name_prefix` option with the blueprint\u2019s own name), checks that this name is not already present in `app.blueprints`, and raises a `ValueError` if a conflict is found. It also determines whether this is the first time the blueprint (or this name) is being registered on the app. According to its docstring, it then creates a `BlueprintSetupState` and runs each recorded callback (e.g., route registrations) with that state.  \n   ```python\n   name_prefix = options.get(\"name_prefix\", \"\")\n   self_name = options.get(\"name\", self.name)\n   name = f\"{name_prefix}.{self_name}\".lstrip(\".\")\n   if name in app.blueprints:\n       raise ValueError(...)\n   first_bp_registration = not any(bp is self for bp in app.blueprints.values())\n   first_name_registration = name not in app.blueprints\n   ```  \n   \u30103\u3011\n\n3. **Setup state** \u2013 The `BlueprintSetupState` constructed by `Blueprint.register` stores the app, the blueprint, the merged options, and flags such as `first_registration`, as well as derived values like `subdomain`, `url_prefix`, and `name`. These values are used by the recorded callbacks to actually add routes, error handlers, etc., to the application.  \n   ```python\n   self.app = app\n   self.blueprint = blueprint\n   self.options = options\n   self.first_registration = first_registration\n   self.subdomain = subdomain\n   self.url_prefix = url_prefix\n   self.name = self.options.get(\"name\", blueprint.name)\n   ```  \n   \u30105\u3011\n\nTogether, these steps cause the blueprint\u2019s deferred functions to be executed and its routes and other handlers to become part of the Flask application.",
+    "faithfulness": 1.0,
+    "unsupported": []
+  },
+  {
+    "id": 11,
+    "type": "direct",
+    "question": "How are custom error handlers registered and looked up when an exception occurs?",
+    "refused": false,
+    "cited": [
+      2,
+      3,
+      4,
+      6
+    ],
+    "answer": "Custom error handlers are added to Flask with the **`errorhandler`** decorator (or the equivalent **`register_error_handler`** function).  \nThe decorator defined on both the app and blueprint objects calls **`register_error_handler`** with the supplied status code or exception class, storing the handler in the internal **`error_handler_spec`** mapping\u30103\u3011.  \nYou can register by code (e.g., `@app.errorhandler(404)`) or by any exception class, including non\u2011HTTP exceptions such as `DatabaseError`\u30102\u3011.\n\nWhen an exception is raised during a request, Flask looks up a handler in **`App._find_error_handler`**. It first extracts the exception\u2019s class and HTTP code, then searches the handler maps in this order:\n\n1. Blueprint handler for the specific code  \n2. Application handler for the specific code  \n3. Blueprint handler for the exception class (checking the class\u2019s MRO for the most specific match)  \n4. Application handler for the exception class  \n\nThe search iterates over the blueprints involved in the request and then the app itself, returning the first matching handler it finds\u30106\u3011. If no handler matches, Flask falls back to its default behavior (e.g., returning a generic 500 response)\u30104\u3011.",
+    "faithfulness": 1.0,
+    "unsupported": []
+  },
+  {
+    "id": 12,
+    "type": "direct",
+    "question": "How does the Flask test client make requests and keep cookies between them?",
+    "refused": false,
+    "cited": [
+      1,
+      2,
+      3
+    ],
+    "answer": "The test client stores a cookie jar in the attribute **`self._cookies`** (created when the client is instantiated with the default `use_cookies=True` in `Flask.test_client`\u202f[2][3]).  \n\nFor each request the client first copies any cookies it already has into the WSGI environment with  \n\n```python\nself._add_cookies_to_wsgi(ctx.request.environ)\n```  \n\n(inside `FlaskClient.session_transaction`\u202f[1]).  \n\nAfter the view returns, the client builds a fresh response object and, unless the session is a null session, saves the session and then extracts any \u201cSet\u2011Cookie\u201d headers from the response:\n\n```python\nself._update_cookies_from_response(\n    urlsplit(ctx.request.host_url).hostname or \"localhost\",\n    ctx.request.path,\n    resp.headers.getlist(\"Set-Cookie\"),\n)\n```  \n\nThis updates `self._cookies` so that subsequent requests automatically include the cookies set by previous responses.  \n\nIf cookies are disabled (`self._cookies is None`), a `TypeError` is raised, forcing the client to be created with `use_cookies=True`.\u202f[1]",
+    "faithfulness": 1.0,
+    "unsupported": []
+  },
+  {
+    "id": 13,
+    "type": "direct",
+    "question": "What happens from an incoming WSGI request to the view function being called and a response returned?",
+    "refused": false,
+    "cited": [
+      1,
+      2,
+      3,
+      5,
+      6
+    ],
+    "answer": "When a client makes an HTTP request the WSGI server:\n\n1. Receives the request, builds a WSGI ``environ`` dict and calls the Flask\n   application object (the WSGI callable)\u202f\u30103\u2020L4-L8\u3011.  \n\n2. The call enters **`Flask.wsgi_app`**. It creates a request context from the\n   ``environ`` (`ctx = self.request_context(environ)`) and pushes it\n   (`ctx.push()`)\u202f\u30102\u2020L9-L13\u3011.  \n\n3. While the context is active Flask runs **`full_dispatch_request`**, which\n   performs the request\u2011handling pipeline described in the lifecycle docs:\n   * an ``AppContext`` is created, making ``current_app``, ``g``, ``request``,\n     ``session`` available\u202f\u30101\u2020L2-L5\u3011;\n   * the ``appcontext_pushed`` signal is sent\u202f\u30101\u2020L5-L6\u3011;\n   * the URL is matched against the rules registered with ``@app.route``\u202f\u30101\u2020L9-L11\u3011;\n   * the ``request_started`` signal is sent\u202f\u30101\u2020L12-L13\u3011;\n   * any ``@app.url_value_preprocessor`` and ``@app.before_request`` functions\n     are executed\u202f\u30101\u2020L14-L16\u3011;\n   * if a before\u2011request function returns a value, it is used as the response\n     immediately\u202f\u30101\u2020L15-L16\u3011;\n   * the matched view function is called\u202f\u30101\u2020L18-L20\u3011;\n   * if an exception occurs, a matching ``@app.errorhandler`` is invoked\u202f\u30101\u2020L21-L23\u3011;\n   * the returned value (from a before\u2011request, the view, or an error handler)\n     is converted to a ``Response`` object\u202f\u30101\u2020L24-L26\u3011.  \n\n4. The view\u2019s return value is turned into a proper ``Response`` by\n   **`Flask.make_response`** (which wraps strings, dicts, etc. in the app\u2019s\n   ``response_class``)\u202f\u30105\u2020L1-L13\u3011\u30106\u2020L1-L9\u3011.  \n\n5. The ``Response`` object is then called with the original ``environ`` and\n   ``start_response`` to produce the WSGI byte iterable that the server sends\n   back to the client\u202f\u30102\u2020L14-L16\u3011.  \n\n6. After the response is generated, the request context is popped (passing any\n   stored error) and any teardown events run\u202f\u30102\u2020L24-L31\u3011.  \n\nThus the flow is: WSGI server \u2192 ``Flask.wsgi_app`` \u2192 request context push \u2192\nrouting & pre\u2011request processing \u2192 view function call \u2192 ``make_response`` \u2192\n``Response`` \u2192 WSGI response sent \u2192",
+    "faithfulness": 1.0,
+    "unsupported": []
+  },
+  {
+    "id": 14,
+    "type": "direct",
+    "question": "How do request, g, and current_app resolve to the right object for the current request?",
+    "refused": false,
+    "cited": [
+      1,
+      2,
+      5
+    ],
+    "answer": "`request`, `g` and `current_app` are **`LocalProxy` objects** that look up the object stored in Flask\u2019s *context variable* for the current activity.\n\n* In **`src/flask/globals.py`** the proxies are created with a `ContextVar` named `_cv_app`:\n\n```python\n_cv_app: ContextVar[AppContext] = ContextVar(\"flask.app_ctx\")\napp_ctx: AppContextProxy = LocalProxy(_cv_app, unbound_message=_no_app_msg)\ncurrent_app: FlaskProxy = LocalProxy(_cv_app, \"app\", unbound_message=_no_app_msg)\ng: _AppCtxGlobalsProxy = LocalProxy(_cv_app, \"g\", unbound_message=_no_app_msg)\nrequest: RequestProxy = LocalProxy(_cv_app, \"request\", unbound_message=_no_req_msg)\n```\n\n* When Flask begins handling a request (or a CLI command, `with` block, etc.) it **pushes an `AppContext` / `RequestContext`** onto the stack. That context sets `_cv_app` to the newly created `AppContext` instance, which holds the real objects (`app`, `g`, `request`, `session`) for that request.\u202f[5] shows the `AppContext` stores `self._request`, `self.g`, etc.\n\n* The `LocalProxy` reads the current value of `_cv_app` and then returns the attribute named in its second argument (`\"app\"`, `\"g\"`, `\"request\"`). Thus each proxy automatically resolves to the objects that belong to the **active context**.\u202f[2] explains that \u201cProxy objects like :data:`.request`, :data:`.session`, :data:`.g`, and :data:`.current_app`, are accessible while the context is pushed and active\u201d.\n\n* The design description notes that Flask \u201cuses special context locals and proxies to provide access to the current app and request data to any code running during a request\u201d.\u202f[1]\n\nTogether, the `ContextVar`\u2011based `LocalProxy` mechanism ensures that `request`, `g`, and `current_app` always point to the objects associated with the **current request\u2019s context**.",
+    "faithfulness": 1.0,
+    "unsupported": []
+  },
+  {
+    "id": 15,
+    "type": "direct",
+    "question": "What cleanup runs at the end of a request, and in what order do teardown functions and context popping happen?",
+    "refused": false,
+    "cited": [
+      1,
+      4,
+      6
+    ],
+    "answer": "At the end of a request Flask runs a series of cleanup steps:\n\n1. **Request\u2011level teardown functions** \u2013 all functions that were registered with `Flask.teardown_request` (or a blueprint\u2019s `teardown_request`) are called.  \n2. The **`request_tearing_down` signal** is sent.  \n3. **Application\u2011level teardown functions** \u2013 functions registered with `Flask.teardown_appcontext` are called.  \n4. The **`appcontext_tearing_down` signal** is sent.  \n5. Finally the **app context is popped** (which also ends the request context).\n\nThis order is described in the lifecycle documentation:\n\n> \u201cAny `Flask.teardown_request` decorated functions are called.  \n> The `request_tearing_down` signal is sent.  \n> Any `Flask.teardown_appcontext` decorated functions are called.  \n> The `appcontext_tearing_down` signal is sent.  \n> The app context is popped \u2026\u201d\u202f[6]\n\nThe actual implementation of the request\u2011level teardown iterates over the registered functions and then sends the signal:\n\n```python\ncollect_errors = _CollectErrors()\nfor name in chain(ctx.request.blueprints, (None,)):\n    if name in self.teardown_request_funcs:\n        for func in reversed(self.teardown_request_funcs[name]):\n            with collect_errors:\n                self.ensure_sync(func)(exc)\n\nwith collect_errors:\n    request_tearing_down.send(self, _async_wrapper=self.ensure_sync, exc=exc)\n```\n[1]\n\nApplication\u2011level teardown functions are registered via `App.teardown_appcontext` and stored in `self.teardown_appcontext_funcs`\u202f[4].\n\nThus, the cleanup sequence is: request\u2011teardown functions \u2192 `request_tearing_down` signal \u2192 app\u2011context teardown functions \u2192 `appcontext_tearing_down` signal \u2192 context pop.",
+    "faithfulness": 1.0,
+    "unsupported": []
+  },
+  {
+    "id": 16,
+    "type": "vocab",
+    "question": "How does Flask remember who the user is between requests?",
+    "refused": false,
+    "cited": [
+      2,
+      3,
+      4
+    ],
+    "answer": "Flask keeps the logged\u2011in user\u2019s identity in the **session**.  \nWhen the login view succeeds it clears any existing data and writes the\nuser\u2019s primary key into the session dictionary:\n\n```python\nsession.clear()\nsession[\"user_id\"] = user[\"id\"]\n```  \n[2]\n\nThe session object is a plain `dict` that Flask serializes into a **signed\ncookie** and sends to the browser.  On each subsequent request the browser\nreturns that cookie, Flask deserializes it, and the stored `user_id` can be\nread from `session` (e.g., in `load_logged_in_user`).  The cookie is set\nby `SecureCookieSessionInterface.save_session`, which creates the signed\nvalue and adds it to the response:\n\n```python\nval = self.get_signing_serializer(app).dumps(dict(session))\nresponse.set_cookie(name, val, ...)\n```  \n[3]\n\nThus the user is \u201cremembered\u201d across requests by persisting the user id in a\ncryptographically signed client\u2011side cookie that Flask restores into the\nsession on every request.  \n[4] (explains that the session data is stored in a cookie and signed).",
+    "faithfulness": 1.0,
+    "unsupported": []
+  },
+  {
+    "id": 18,
+    "type": "vocab",
+    "question": "How can I share data between functions during a single request without passing arguments?",
+    "refused": false,
+    "cited": [
+      3,
+      5
+    ],
+    "answer": "Store the data on Flask\u2019s request\u2011local **`g`** object.  \n`g` is a proxy to a per\u2011request namespace that any code running while the request (or app) context is active can read or write, so you don\u2019t need to pass the value as a function argument.\n\n```python\nfrom flask import g\n\ndef load_user():\n    g.user = get_user_from_db()\n\ndef view():\n    # g.user is available here without being passed\n    return f\"Hello {g.user.name}\"\n```\n\n`g` is only available when an app or request context is active, and it provides a separate value for each request\u202f\u2014\u202fexactly for sharing data during a single request\u202f[5][3].",
+    "faithfulness": 1.0,
+    "unsupported": []
+  },
+  {
+    "id": 20,
+    "type": "vocab",
+    "question": "How do I run some code before every request is handled?",
+    "refused": false,
+    "cited": [
+      1,
+      3,
+      4
+    ],
+    "answer": "Register a function with the app\u2019s **before\u2011request** hook.  \nDefine the function and decorate it with `@app.before_request` (or `@blueprint.before_request` for a specific blueprint). Flask will add the function to `self.before_request_funcs` and call it before each request is dispatched; if the function returns a non\u2011`None` value the request handling stops and that value is used as the response\u30101\u3011. During request processing Flask iterates over the registered `before_request` functions in `Flask.preprocess_request` and executes them before the view is called\u30103\u3011.  \n\nIf you need the code to run before *all* requests even when registered on a blueprint, use `@blueprint.before_app_request`, which records the function on the application\u2019s `before_request_funcs` list\u30104\u3011.",
+    "faithfulness": 1.0,
+    "unsupported": []
+  },
+  {
+    "id": 22,
+    "type": "vocab",
+    "question": "How can one URL respond differently to GET and POST using a class?",
+    "refused": false,
+    "cited": [
+      1,
+      5
+    ],
+    "answer": "Create a view class that inherits **`MethodView`** and implement a `get` method for the\u202fGET request and a `post` method for the\u202fPOST request. Then register the class with `app.add_url_rule` using its `as_view` helper. Flask will dispatch the request to the method whose name matches the HTTP verb.\n\n```python\nfrom flask.views import MethodView\nfrom flask import Flask, request, redirect, url_for, session\n\napp = Flask(__name__)\n\nclass CounterAPI(MethodView):\n    def get(self):\n        return str(session.get(\"counter\", 0))\n\n    def post(self):\n        session[\"counter\"] = session.get(\"counter\", 0) + 1\n        return redirect(url_for(\"counter\"))\n\napp.add_url_rule(\"/counter\", view_func=CounterAPI.as_view(\"counter\"))\n```\n\n* `MethodView` \u201cdispatches request methods to the corresponding instance methods\u2026 each HTTP method maps to a method of the class with the same (lowercase) name\u201d\u202f[5].\n* The documentation notes that \u201cFor APIs it can be helpful to use a different function for each HTTP method. `MethodView` extends the basic `View` to dispatch to different methods of the class based on the request method\u201d\u202f[1].\n\nWith this setup, a GET to `/counter` calls `CounterAPI.get`, while a POST to the same URL calls `CounterAPI.post`.",
+    "faithfulness": 1.0,
+    "unsupported": []
+  },
+  {
+    "id": 24,
+    "type": "identifier",
+    "question": "Where is SecureCookieSessionInterface.save_session defined and what does it do?",
+    "refused": false,
+    "cited": [
+      1,
+      2
+    ],
+    "answer": "`SecureCookieSessionInterface.save_session` is defined in **src/flask/sessions.py** as a method of the `SecureCookieSessionInterface` class\u202f[1][2].  \n\nThe method:\n\n1. Determines the cookie name, domain, path, security flags, partitioning, SameSite, and HttpOnly settings from the app\u202f[2].  \n2. Adds a **Vary: Cookie** header if the session was accessed\u202f[2].  \n3. If the session is empty:\n   * When it has been modified, it deletes the cookie with the same attributes and adds a **Vary: Cookie** header\u202f[2].\n   * Otherwise it returns without setting a cookie\u202f[2].  \n4. If the session should not be set (per `should_set_cookie`), it returns early\u202f[2].  \n5. Otherwise it computes the expiration time, serializes the session data with the signing serializer, and calls `response.set_cookie` with the computed value and all cookie attributes\u202f[2].  \n6. Finally, it adds another **Vary: Cookie** header\u202f[2].\n\nThus, the method is responsible for writing (or removing) the signed session cookie on the response based on the current session state.",
+    "faithfulness": 1.0,
+    "unsupported": []
+  },
+  {
+    "id": 26,
+    "type": "identifier",
+    "question": "How does get_flashed_messages work?",
+    "refused": false,
+    "cited": [
+      1
+    ],
+    "answer": "`get_flashed_messages` retrieves the flash messages that were stored in the session for the current request.\n\n1. It first looks for a cached list in `app_ctx._flashes`. If that attribute is `None`, it removes the `_flashes` entry from the session (if present) and assigns the resulting list to `app_ctx._flashes`\u30101\u3011.  \n2. If a `category_filter` iterable is supplied, the function filters the list so that only entries whose category (`f[0]`) is in the filter remain\u30101\u3011.  \n3. When `with_categories` is **False** (the default), it returns only the message part of each flash (`x[1]`), producing a list of strings\u30101\u3011.  \n4. When `with_categories` is **True**, it returns the full `(category, message)` tuples, yielding a list of tuples\u30101\u3011.\n\nThus the function returns either `list[str]` or `list[tuple[str, str]]` depending on the `with_categories` flag, optionally limited to the categories given by `category_filter`.",
+    "faithfulness": 1.0,
+    "unsupported": []
+  },
+  {
+    "id": 28,
+    "type": "identifier",
+    "question": "How does FlaskGroup find the application to load?",
+    "refused": false,
+    "cited": [
+      1,
+      4,
+      5
+    ],
+    "answer": "`FlaskGroup` does not look for the app itself; it asks the **`ScriptInfo`** object that is stored in the Click context.  \n\nIn `FlaskGroup.get_command` the group calls  \n\n```python\ninfo = ctx.ensure_object(ScriptInfo)\napp = info.load_app()\n```  \n\n[5]  \n\n`ScriptInfo` holds the information needed to locate the application. Its constructor stores an optional import path (`app_import_path`) and an optional factory (`create_app`)\u202f\u2014\u202fboth are later used by `load_app()` to actually import or create the Flask app.  \n\n[4]  \n\nThe import path is populated by the eager `--app` option defined in the CLI module. The option\u2019s callback `_set_app` stores the value on the `ScriptInfo` instance:\n\n```python\ndef _set_app(ctx, param, value):\n    if value is None:\n        return None\n    info = ctx.ensure_object(ScriptInfo)\n    info.app_import_path = value\n    return value\n```  \n\n[1]  \n\nTherefore, `FlaskGroup` finds the application to load via the `ScriptInfo` object, which gets the app import path from the `--app` option (or from a `create_app` callback passed when the group is instantiated).",
+    "faithfulness": 1.0,
+    "unsupported": []
+  },
+  {
+    "id": 30,
+    "type": "docs",
+    "question": "How do I deploy a Flask app with Gunicorn?",
+    "refused": false,
+    "cited": [
+      1,
+      2
+    ],
+    "answer": "To deploy a Flask project with **Gunicorn**:\n\n1. **Create a virtual environment and install your app**  \n   ```text\n   $ cd hello-app\n   $ python -m venv .venv\n   $ . .venv/bin/activate\n   $ pip install .      # install your application\n   ```  \n   *(the same steps are shown in the \u201cInstalling\u201d section)*\u30101\u2020L23-L31\u3011  \n\n2. **Install Gunicorn in the same environment**  \n   ```text\n   $ pip install gunicorn\n   ```  \n   *(listed under \u201cInstalling\u201d)*\u30101\u2020L33-L35\u3011\n\n3. **Run Gunicorn, pointing it at the module that contains the Flask app**  \n\n   *If the app is a plain object:*  \n   ```text\n   $ gunicorn -w 4 'hello:app'\n   ```  \n   *If you use an app\u2011factory:*  \n   ```text\n   $ gunicorn -w 4 'hello:create_app()'\n   ```  \n   *(examples in the \u201cRunning\u201d section)*\u30101\u2020L45-L55\u3011\n\n4. **Choose the number of worker processes**  \n   The `-w` option sets workers; a common start value is `CPU * 2`. The default is a single worker.\u30101\u2020L57-L61\u3011\u30102\u2020L62-L66\u3011\n\n5. **(Optional) Bind to an external address**  \n   When you need the server reachable from other hosts, add `-b 0.0.0.0` (or a specific IP). Do **not** run as root; instead place a reverse proxy (nginx, Apache) in front.\u30102\u2020L71-L80\u3011\u30102\u2020L84-L88\u3011\n\n6. **(Optional) Show access logs**  \n   Use `--access-logfile=-` to stream request logs to stdout.\u30102\u2020L68-L70\u3011\n\n7. **(Optional) Use an asynchronous worker**  \n   For many concurrent connections, start Gunicorn with the gevent worker:  \n   ```text\n   $ gunicorn -k gevent 'hello:create_app()'\n   ```  \n   *(shown in the \u201cAsync with gevent\u201d section)*\u30102\u2020L92-L100\u3011\n\nFollowing these steps will launch your Flask application under Gunicorn, ready to be fronted by a production web server or reverse proxy.",
+    "faithfulness": 1.0,
+    "unsupported": []
+  },
+  {
+    "id": 32,
+    "type": "docs",
+    "question": "How do I structure a Flask project using an application factory?",
+    "refused": false,
+    "cited": [
+      1,
+      2,
+      3,
+      4,
+      6
+    ],
+    "answer": "Structure the project as a package (e.g.,\u202f`flaskr/`) and put the **application\u2011factory** in its `__init__.py`:\n\n```python\n# flaskr/__init__.py\nimport os\nfrom flask import Flask\n\ndef create_app(test_config=None):\n    # 1. create the Flask instance\n    app = Flask(__name__, instance_relative_config=True)\n\n    # 2. set default configuration\n    app.config.from_mapping(\n        SECRET_KEY='dev',\n        DATABASE=os.path.join(app.instance_path, 'flaskr.sqlite'),\n    )\n\n    # 3. optionally override with a config file or a test dict\n    if test_config is None:\n        app.config.from_pyfile('config.py', silent=True)\n    else:\n        app.config.from_mapping(test_config)\n\n    # 4. make sure the instance folder exists\n    os.makedirs(app.instance_path, exist_ok=True)\n\n    # 5. register simple routes (or later blueprints)\n    @app.route('/hello')\n    def hello():\n        return 'Hello, World!'\n\n    # 6. register extensions / other modules\n    from . import db          # db.py defines init_app()\n    db.init_app(app)          # registers teardown and CLI command\n\n    # 7. (optional) register blueprints here\n    # from .views import bp\n    # app.register_blueprint(bp)\n\n    return app\n```\n\nKey points explained by the documentation:\n\n* The factory lives in `flaskr/__init__.py` and returns the configured app\u202f\u2014\u202fthe \u201capplication factory\u201d\u202f[1][4].\n* `Flask(__name__, instance_relative_config=True)` creates the app and tells Flask to look for instance\u2011specific files outside the package\u202f[4].\n* `app.config.from_mapping()` supplies defaults such as `SECRET_KEY` and the SQLite path\u202f[4].\n* `app.config.from_pyfile()` (or `app.config.from_mapping(test_config)`) lets you override defaults for production or tests\u202f[1][4].\n* `os.makedirs(app.instance_path, exist_ok=True)` ensures the instance folder exists\u202f[1][4].\n* Extensions should be created **without** an app and later bound with `init_app(app)`; e.g., a `SQLAlchemy` object defined as `db = SQLAlchemy()` and initialized inside the factory\u202f[2][6].\n* A separate module (e.g., `flaskr/db.py`) provides an `init_app(app)` function that registers teardown handlers and CLI commands, and the factory imports and calls it\u202f[3].\n* Blueprints can be imported and registered inside the factory after the app is created\u202f[6].\n\nWith this layout you can create multiple independent app instances (for testing, different configs, etc.) by calling `create_app()` with different arguments.",
+    "faithfulness": 1.0,
+    "unsupported": []
+  },
+  {
+    "id": 35,
+    "type": "negative",
+    "question": "How does Flask connect to PostgreSQL?",
+    "refused": true,
+    "cited": [],
+    "answer": "I couldn't find this in the indexed code. The excerpts cover the Flask CLI route\u2011listing command, documentation about using SQLAlchemy with Flask, patterns for extension development, the `Flask.create_url_adapter` method for binding URLs, and example SQLite\u2011based helper functions (`get_db` and `init_db`). None of them show how Flask connects to PostgreSQL."
+  },
+  {
+    "id": 36,
+    "type": "negative",
+    "question": "How does Flask integrate with Kafka message queues?",
+    "refused": true,
+    "cited": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ],
+    "answer": "I couldn't find this in the indexed code. The provided excerpts cover:\n\n* Documentation for deploying with **mod_wsgi** and its installation/running instructions\u30101\u3011.  \n* Instructions for configuring **Sentry** error reporting and Flask error handlers\u30102\u3011.  \n* Parts of the **Flask CLI** implementation, including loading an app, handling command listing, and setting environment flags\u30103\u3011, as well as the route\u2011listing command that formats and displays URL rules\u30106\u3011.  \n* Guidance on using **Celery** for background tasks with Flask, showing how to create a Celery app that runs tasks within the Flask application context\u30104\u3011.  \n* Design notes about Flask\u2019s context locals, proxies, and async/await support\u30105\u3011."
+  }
+]
