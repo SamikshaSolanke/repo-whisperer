@@ -38,12 +38,20 @@ DOC_LANGUAGES = {"markdown", "rst"}
 LOW_PRIORITY_DIRS = {"examples", "tests", "docs"}
 NON_CODE_PENALTY = 2.0     # subtracted from the reranker score; tune on the eval set
 
-REPOS = ["pallets/flask"]          # add a second repo here after you index it
+REPOS = ["pallets/flask", "psf/requests"]
 APP_MAX_QUESTIONS = 10             # per browser session
 APP_MAX_QUESTION_CHARS = 500
-SAMPLE_QUESTIONS = [
-    "How does Flask register a blueprint on an application?",
-    "How does Flask remember who the user is between requests?",
-    "How does jsonify create a JSON response?",
-    "How does Flask connect to PostgreSQL?",
-]
+APP_DAILY_LIMIT = 30     # total questions per day across all visitors (~5k tokens each)
+SAMPLE_QUESTIONS = {
+    "pallets/flask": [
+        "How does Flask register a blueprint on an application?",
+        "How does Flask remember who the user is between requests?",
+        "How does jsonify create a JSON response?",
+        "How does Flask connect to PostgreSQL?",
+    ],
+    "psf/requests": [
+        "How does Requests follow redirects?",
+        "How does Requests decide which encoding to use for response text?",
+        "How are cookies kept between requests in a Session?",
+    ],
+}

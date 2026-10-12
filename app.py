@@ -1,4 +1,6 @@
+import datetime
 import re
+import threading
 import streamlit as st
 from groq import RateLimitError
 import config
@@ -18,6 +20,25 @@ def warm_up():
     _sparse()
     _client()
     return True
+
+
+@st.cache_resource
+def _budget():
+    return {"day": None, "count": 0, "lock": threading.Lock()}
+
+
+def take_slot() -> bool:
+    """Global daily question cap shared by all sessions in this server process.
+    Resets each UTC day, and when the server restarts."""
+    b = _budget()
+    today = datetime.datetime.now(datetime.timezone.utc).date().isoformat()
+    with b["lock"]:
+        if b["day"] != today:
+            b["day"], b["count"] = today, 0
+        if b["count"] >= config.APP_DAILY_LIMIT:
+            return False
+        b["count"] += 1
+        return True
 
 
 def linkify(text: str, chunks: list[dict]) -> str:
@@ -72,6 +93,11 @@ def render_entry(e: dict):
 
 
 def answer_question(question: str, repo: str, use_rewrite: bool):
+    if not take_slot():
+        st.warning("This demo has reached its daily question limit to stay within free-tier "
+                   "quotas. Please come back tomorrow, or run it yourself (see the README).")
+        return
+
     with st.chat_message("user"):
         st.markdown(question)
     with st.chat_message("assistant"):
@@ -149,9 +175,11 @@ if question:
     else:
         answer_question(question, repo, use_rewrite)
 elif not st.session_state.history:
-    st.markdown("**Try one:**")
-    cols = st.columns(2)
-    for i, q in enumerate(config.SAMPLE_QUESTIONS):
-        if cols[i % 2].button(q, key=f"sample{i}", use_container_width=True):
-            st.session_state.pending = q
-            st.rerun()
+    samples = config.SAMPLE_QUESTIONS.get(repo, [])
+    if samples:
+        st.markdown("**Try one:**")
+        cols = st.columns(2)
+        for i, q in enumerate(samples):
+            if cols[i % 2].button(q, key=f"sample{i}", use_container_width=True):
+                st.session_state.pending = q
+                st.rerun()

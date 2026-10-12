@@ -1,7 +1,7 @@
 from functools import lru_cache
 from fastembed import SparseTextEmbedding, TextEmbedding
 from fastembed.rerank.cross_encoder import TextCrossEncoder
-from qdrant_client import models
+from qdrant_client import models, QdrantClient
 import config
 from ingest.index import get_client
 from query.rewrite import rewrite_query
@@ -24,7 +24,7 @@ def _reranker():
 
 @lru_cache(maxsize=1)
 def _client():
-    return get_client()
+    return QdrantClient(url=config.QDRANT_URL, api_key=config.QDRANT_API_KEY, timeout=60)
 
 
 def permalink(payload: dict) -> str:
