@@ -1,7 +1,10 @@
-# repo-whisperer
+# RepoWhisperer: Codebase Q&A with Cited Answers
 
 Ask questions about a codebase and get answers that cite the exact lines, pinned to a commit.
 · Python · Qdrant · Groq · Streamlit
+
+
+https://github.com/user-attachments/assets/b5c7a479-7382-4b1f-915d-2986fe4d85b0
 
 
 ## What it does
