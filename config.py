@@ -37,3 +37,13 @@ SKIP_FILES = {"CHANGES.rst", "LICENSE.txt"}
 DOC_LANGUAGES = {"markdown", "rst"}
 LOW_PRIORITY_DIRS = {"examples", "tests", "docs"}
 NON_CODE_PENALTY = 2.0     # subtracted from the reranker score; tune on the eval set
+
+REPOS = ["pallets/flask"]          # add a second repo here after you index it
+APP_MAX_QUESTIONS = 10             # per browser session
+APP_MAX_QUESTION_CHARS = 500
+SAMPLE_QUESTIONS = [
+    "How does Flask register a blueprint on an application?",
+    "How does Flask remember who the user is between requests?",
+    "How does jsonify create a JSON response?",
+    "How does Flask connect to PostgreSQL?",
+]
