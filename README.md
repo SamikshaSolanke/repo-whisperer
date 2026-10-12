@@ -81,6 +81,33 @@ LLM judge, so I validated it by injecting unsupported claims into real answers: 
 flagged 5/5 fabricated claims and 4/5 true-but-ungrounded claims (n=5). Read the scores
 as "no unsupported claims detected", a lower bound on leakage.
 
+## Problems I faced and how I solved them
+
+| # | Problem | Cause | Fix |
+|---|---|---|---|
+| 1 | Cloning Flask into my project made git stage ~250 files as an "embedded repository" | I cloned before ignoring `data/repos/`, then ran `git add .` | Unstaged it, added `data/repos/*` to `.gitignore` *before* cloning, and tested the rule with `git check-ignore`. I now check `git status` before every commit. |
+| 2 | `pytest` crashed collecting Flask's own tests, and couldn't import my `ingest` package | Pytest searched every folder, including the cloned repo, and didn't add the project root to the import path | `pytest.ini` with `testpaths = tests`, `pythonpath = .`, and `norecursedirs = data venv` |
+| 3 | The LLM call returned 404 `model_not_found` | Groq retired `llama-3.3-70b-versatile` mid-project | Queried Groq's models endpoint, switched to `gpt-oss-120b`, and moved the model name to an environment variable |
+| 4 | Citations silently disappeared from the Sources list | The model wrote `【1】`, then `【3†L5-L7】`, instead of `[1]`, and my regex only matched `[1]` | Made the parser accept all bracket styles, tightened the prompt, and added a unit test. Citations are mapped to real chunks in code, so a model can't invent a source. |
+| 5 | Long functions would have been silently truncated | The embedding model reads only 512 tokens, but I'd sized chunks for ~1,500 | Switched the limit to characters (2,000), and split oversized functions into overlapping windows |
+| 6 | `retrieve()` returned `None` and the eval crashed | A pasted code edit dropped the final `return` | Replaced the function in full and checked it with the baseline eval before running anything else |
+| 7 | The reranker made retrieval worse, and docs crowded out source code | A cross-encoder trained on web text prefers prose | Measured it as an ablation (Hit@5 88% to 79%), tried a path-based penalty, saw it cost the docs questions, and dropped the reranker from the pipeline |
+| 8 | LLM query rewrites invented identifiers like `persist_login_state` | BM25 treats any token as a real search term | Told the rewriter not to invent identifiers, and cleared the rewrite cache (its key didn't include the prompt) |
+| 9 | My first 15 eval questions couldn't tell the components apart (93% to 100%, one question's worth) | The set was small and all answers were in `src/`, so it favored whatever I tuned | Grew it to 38 questions in five types, added a held-out test split, and ran test once after freezing the configuration |
+| 10 | A "negative" question wasn't actually negative | "GraphQL" appears in Flask's testing docs | Wrote `verify_dataset.py` to grep the corpus for each negative question's key terms, and replaced the question before running any evaluation |
+| 11 | Re-running one eval config overwrote the others' saved results | Each run wrote the whole results file | Merged new rows into the existing JSON, and let `--only` accept several configs |
+| 12 | The generation eval hit Groq rate limits: first per minute, then the 200,000 tokens/day cap, and lost 10 answers of progress | Each question costs about 7,000 tokens (answer plus judge), and results were saved only at the end | Saved after every question with resume support, stopped cleanly on the daily-limit error, paced requests, and moved the judge to a second model with its own quota |
+| 13 | A perfect faithfulness score of 1.00 looked too good to trust | A small same-family LLM judge can be lenient | Validated the judge by injecting unsupported claims into real answers: it caught 5/5 fabricated claims and 4/5 true-but-ungrounded ones |
+| 14 | A public demo would drain my free API quota | A per-session limit resets on every page refresh | Added a global daily question cap shared across sessions, plus input-length limits and friendly error messages for rate limits and index outages |
+
+### Patterns I took from these
+
+- **Measure before and after every change.** The reranker and the code-path penalty sounded right, and both failed when measured.
+- **Distrust a result that looks too good.** The 93%-to-100% retrieval table and the 1.00 faithfulness score each needed a harder test before I believed them.
+- **Validate data and tools, not only code.** Two of the worst problems were a mislabeled eval question and a lenient judge.
+- **Make long jobs resumable.** Free-tier limits will interrupt anything long, so progress has to be saved incrementally.
+- **Parse model output defensively.** Format drift is normal. Keep the parser tolerant and don't let the model be the source of truth for anything that can be verified in code.
+
 ## What I learned
 
 1. **Chunk boundaries matter.** AST chunks beat same-size fixed windows (with the same
